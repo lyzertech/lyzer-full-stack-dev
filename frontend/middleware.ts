@@ -1,34 +1,55 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Next.js Middleware
+ * 
+ * Protects routes at the edge before rendering
+ * Uses session_token cookie for authentication
+ * 
+ * Login page: /
+ * Signup page: /authentication/sign-up
+ */
 
-// Supported module subdomains
-const MODULES = ['finance', 'labs', 'school'];
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// Routes that require authentication
+const PROTECTED_ROUTES = [
+  '/dashboards',
+];
 
 export function middleware(request: NextRequest) {
-  const hostname = request.headers.get('host') || '';
-  const pathname = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  // Extract subdomain: "finance.lyzer.test:3000" → "finance"
-  // Works for both *.lyzer.test and localhost-based fake subdomains
-  const hostWithoutPort = hostname.split(':')[0];
-  const parts = hostWithoutPort.split('.');
-  const subdomain = parts.length >= 3 ? parts[0] : null;
+  // Get session token from cookies
+  const sessionToken = request.cookies.get('session_token')?.value;
+  const hasSessionCookie = !!sessionToken;
 
-  // If we have a valid module subdomain, rewrite to /{module}{pathname}
-  if (subdomain && MODULES.includes(subdomain)) {
-    // Avoid double-prefixing if path already starts with /module
-    if (!pathname.startsWith(`/${subdomain}`)) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/${subdomain}${pathname}`;
-      return NextResponse.rewrite(url);
-    }
+  // Check if route is protected (requires auth)
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+
+  // Protected routes: redirect to login page (/) if no session cookie
+  if (isProtectedRoute && !hasSessionCookie) {
+    const loginUrl = new URL('/', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(loginUrl);
   }
+
+
 
   return NextResponse.next();
 }
 
+// Configure which routes this middleware runs on
 export const config = {
-  // Run middleware on all routes except Next.js internals and static files
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    /*
+     * Match all request paths except:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (public assets)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|assets).*)',
   ],
 };
+

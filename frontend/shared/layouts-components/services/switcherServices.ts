@@ -1,113 +1,146 @@
-"use client"
+'use client'
 
-import { BehaviorSubject } from "rxjs"
+import { BehaviorSubject } from 'rxjs'
+import { DEFAULT_THEME } from '@/shared/config/themeConfig'
 
 interface Body {
-    class: string;
+  class: string
 }
 
 interface InitialState {
-    lang: string;
-    dir: string;
-    dataThemeMode: string;
-    dataMenuStyles: string;
-    dataNavLayout: string;
-    dataHeaderStyles: string;
-    dataVerticalStyle: string;
-    toggled: string;
-    dataNavStyle: string;
-    horStyle: string;
-    dataPageStyle: string;
-    dataWidth: string;
-    dataMenuPosition: string;
-    dataHeaderPosition: string;
-    loader: string;
-    iconOverlay: string;
-    colorPrimaryRgb: string;
-    bodyBg: string;
-    bodyBg2: string;
-    inputBorder: string;
-    lightRgb: string;
-    formControlBg: string;
-    gray: string;
-    bgImg: string | any;
-    iconText: string;
-    body: Body;
+  lang: string
+  dir: string
+  dataThemeMode: string
+  dataMenuStyles: string
+  dataNavLayout: string
+  dataHeaderStyles: string
+  dataVerticalStyle: string
+  toggled: string
+  dataNavStyle: string
+  horStyle: string
+  dataPageStyle: string
+  dataWidth: string
+  dataMenuPosition: string
+  dataHeaderPosition: string
+  loader: string
+  iconOverlay: string
+  colorPrimaryRgb: string
+  bodyBg: string
+  bodyBg2: string
+  inputBorder: string
+  lightRgb: string
+  formControlBg: string
+  gray: string
+  bgImg: string | any
+  iconText: string
+  body: Body
+}
+
+// Helper function to get theme from localStorage
+const getInitialThemeMode = (): string => {
+  if (typeof window !== 'undefined') {
+    // Check for dark theme first
+    if (localStorage.getItem('vyzordarkTheme') === 'dark') {
+      return 'dark'
+    }
+    // Check for light theme
+    if (localStorage.getItem('vyzorlightTheme') === 'light') {
+      return 'light'
+    }
+    // Check if there's a custom background (which implies dark theme)
+    if (localStorage.getItem('bodyBg')) {
+      return 'dark'
+    }
+  }
+  // Default to configured theme if nothing is stored
+  return DEFAULT_THEME
 }
 
 //  Initial state with default values
 
 const initialState: InitialState = {
-    lang: "en",                     
-    dir: "ltr",
-    dataThemeMode: "light",
-    dataMenuStyles: "transparent",
-    dataNavLayout: "vertical",
-    dataHeaderStyles: "transparent",
-    dataVerticalStyle: "doublemenu",
-    toggled: "",
-    dataNavStyle: "",
-    horStyle: "",
-    dataPageStyle: "flat",
-    dataWidth: "fullwidth",
-    dataMenuPosition: "fixed",
-    dataHeaderPosition: "fixed",
-    loader: "disable",
-    iconOverlay: "",
-    colorPrimaryRgb: "",
-    bodyBg: "",
-    bodyBg2: "",
-    inputBorder: "",
-    lightRgb: "",
-    formControlBg: "",
-    gray: "",
-    bgImg: "",
-    iconText: "",
-    body: {
-        class: ""
-    }
-};
+  lang: 'en',
+  dir: 'ltr',
+  dataThemeMode: getInitialThemeMode(),
+  dataMenuStyles: 'transparent',
+  dataNavLayout: 'vertical',
+  dataHeaderStyles: 'transparent',
+  dataVerticalStyle: 'doublemenu',
+  toggled: '',
+  dataNavStyle: '',
+  horStyle: '',
+  dataPageStyle: 'flat',
+  dataWidth: 'fullwidth',
+  dataMenuPosition: 'fixed',
+  dataHeaderPosition: 'fixed',
+  loader: 'disable',
+  iconOverlay: '',
+  colorPrimaryRgb: '',
+  bodyBg: '',
+  bodyBg2: '',
+  inputBorder: '',
+  lightRgb: '',
+  formControlBg: '',
+  gray: '',
+  bgImg: '',
+  iconText: '',
+  body: {
+    class: '',
+  },
+}
 
-const stateSubject = new BehaviorSubject<InitialState>(initialState);
+const stateSubject = new BehaviorSubject<InitialState>(initialState)
 
-export const data$ = stateSubject.asObservable();
+export const data$ = stateSubject.asObservable()
 
-const setAttributeIfValid = (element: HTMLElement, attribute: string, value: string) => {
-    if (element && value) {
-        element.setAttribute(attribute, value);
-    } else {
-        element.removeAttribute(attribute);
-    }
+const setAttributeIfValid = (
+  element: HTMLElement,
+  attribute: string,
+  value: string
+) => {
+  if (element && value) {
+    element.setAttribute(attribute, value)
+  } else {
+    element.removeAttribute(attribute)
+  }
 }
 
 const setAttributes: any = () => {
-    const currentState = stateSubject.value;
-    const html = document.documentElement;
+  const currentState = stateSubject.value
+  const html = document.documentElement
 
-    setAttributeIfValid(html, 'lang', currentState.lang);
-    setAttributeIfValid(html, 'dir', currentState.dir);
-    setAttributeIfValid(html, 'data-toggled', currentState.toggled);
-    setAttributeIfValid(html, 'data-theme-mode', currentState.dataThemeMode);
-    setAttributeIfValid(html, 'data-menu-styles', currentState.dataMenuStyles);
-    setAttributeIfValid(html, 'data-nav-layout', currentState.dataNavLayout);
-    setAttributeIfValid(html, 'data-header-styles', currentState.dataHeaderStyles);
-    setAttributeIfValid(html, 'data-vertical-style', currentState.dataVerticalStyle);
-    setAttributeIfValid(html, 'data-nav-style', currentState.dataNavStyle);
-    setAttributeIfValid(html, 'hor-style', currentState.horStyle);
-    setAttributeIfValid(html, 'data-page-style', currentState.dataPageStyle);
-    setAttributeIfValid(html, 'data-width', currentState.dataWidth);
-    setAttributeIfValid(html, 'data-menu-position', currentState.dataMenuPosition);
-    setAttributeIfValid(html, 'data-header-position', currentState.dataHeaderPosition);
-    setAttributeIfValid(html, 'data-icon-overlay', currentState.iconOverlay);
-    setAttributeIfValid(html, 'data-bg-img', currentState.bgImg);
-    setAttributeIfValid(html, 'icon-text', currentState.iconText);
-    setAttributeIfValid(html, 'loader', currentState.loader);
+  setAttributeIfValid(html, 'lang', currentState.lang)
+  setAttributeIfValid(html, 'dir', currentState.dir)
+  setAttributeIfValid(html, 'data-toggled', currentState.toggled)
+  setAttributeIfValid(html, 'data-theme-mode', currentState.dataThemeMode)
+  setAttributeIfValid(html, 'data-menu-styles', currentState.dataMenuStyles)
+  setAttributeIfValid(html, 'data-nav-layout', currentState.dataNavLayout)
+  setAttributeIfValid(html, 'data-header-styles', currentState.dataHeaderStyles)
+  setAttributeIfValid(
+    html,
+    'data-vertical-style',
+    currentState.dataVerticalStyle
+  )
+  setAttributeIfValid(html, 'data-nav-style', currentState.dataNavStyle)
+  setAttributeIfValid(html, 'hor-style', currentState.horStyle)
+  setAttributeIfValid(html, 'data-page-style', currentState.dataPageStyle)
+  setAttributeIfValid(html, 'data-width', currentState.dataWidth)
+  setAttributeIfValid(html, 'data-menu-position', currentState.dataMenuPosition)
+  setAttributeIfValid(
+    html,
+    'data-header-position',
+    currentState.dataHeaderPosition
+  )
+  setAttributeIfValid(html, 'data-icon-overlay', currentState.iconOverlay)
+  setAttributeIfValid(html, 'data-bg-img', currentState.bgImg)
+  setAttributeIfValid(html, 'icon-text', currentState.iconText)
+  setAttributeIfValid(html, 'loader', currentState.loader)
 }
 
 export const setState: any = (newState: Partial<InitialState>) => {
-    const currentState = stateSubject.value;
-    stateSubject.next({ ...currentState, ...newState });
-    setAttributes()
+  const currentState = stateSubject.value
+  stateSubject.next({ ...currentState, ...newState })
+  setAttributes()
 }
 
-export const getState: any = (): InitialState => stateSubject.value;
+export const getState: any = (): InitialState => stateSubject.value

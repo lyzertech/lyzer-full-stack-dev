@@ -355,7 +355,7 @@ const Landing = () => {
                             {/* <!-- Start::header-link|switcher-icon --> */}
 
                             <div className="btn-list d-lg-none d-flex">
-                                <Link scroll={false} href="/authentication/sign-up/basic" className="btn btn-primary-light">
+                                <Link scroll={false} href="/authentication/sign-up" className="btn btn-primary-light">
                                     Sign Up
                                 </Link>
                                 <SpkButton Buttonvariant='success' onClickfunc={handleShow} Customclass="btn-icon switcher-icon d-flex align-items-center justify-content-center" data-bs-toggle="offcanvas"
@@ -512,7 +512,7 @@ const Landing = () => {
                             </svg></div>
                             <div className="d-lg-flex d-none align-items-center">
                                 <div className="btn-list d-xl-flex d-none">
-                                    <Link scroll={false} href="/authentication/sign-up/basic" className="btn btn-wave btn-primary border">
+                                    <Link scroll={false} href="/authentication/sign-up" className="btn btn-wave btn-primary border">
                                         Login / Register
                                     </Link>
                                 </div>

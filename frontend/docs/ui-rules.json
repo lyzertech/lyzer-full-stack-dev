@@ -1,0 +1,22 @@
+{
+  "layout": {
+    "requiredWrapper": "app/school/layout.tsx",
+    "contentLayoutPath": "app/(components)/(content-layout)/layout.tsx"
+  },
+  "pageTemplate": {
+    "mustInclude": ["Seo", "Pageheader"],
+    "card": {
+      "class": "custom-card",
+      "headerClass": "justify-content-between d-flex align-items-center",
+      "bodyClass": "custom-data-table"
+    },
+    "buttons": {
+      "primaryClass": "btn-wave",
+      "smallButtons": true
+    },
+    "forms": {
+      "useFormRef": true,
+      "editModePattern": true
+    }
+  }
+}

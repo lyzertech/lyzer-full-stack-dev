@@ -10,10 +10,24 @@ import SimpleBar from 'simplebar-react';
 import { MENUITEMS } from '../sidebar/nav';
 import { getState, setState } from '../services/switcherServices';
 import SpkButton from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-buttons';
+import { useAuth } from '@/shared/auth/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const Header = () => {
 
     let [variable, setVariable] = useState(getState());
+    const { user, logout } = useAuth();
+    const router = useRouter();
+
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await logout();
+            router.push('/');
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    };
 
     // MenuClose Function
 
@@ -442,7 +456,7 @@ const Header = () => {
 
                         <div className="header-element">
                             <div className="horizontal-logo">
-                                <Link scroll={false} href="/dashboards/sales/" className="header-logo">
+                                <Link scroll={false} href="/dashboards/sales/" className="header-logo position-relative">
                                     <Image fill src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/brand-logos/desktop-logo.png`} alt="logo" className="desktop-logo" />
                                     <Image fill src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/brand-logos/toggle-logo.png`} alt="logo" className="toggle-logo" />
                                     <Image fill src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/brand-logos/desktop-dark.png`} alt="logo" className="desktop-dark" />
@@ -658,15 +672,15 @@ const Header = () => {
                                     </div>
                                 </div>
                                 {note.length === 0 && (
-                                    <div className="p-5 empty-item"> 
-                                        <div className="text-center"> 
-                                            <span className="avatar avatar-xl avatar-rounded bg-success-transparent"> 
-                                                <i className="ti ti-shopping-cart fs-2"></i> 
-                                            </span> 
-                                            <h6 className="fw-medium mb-1 mt-3">No items in your cart yet</h6> 
-                                            <span className="mb-3 fw-normal fs-13 d-block">Add some to enjoy a seamless checkout experience! :)</span> 
-                                        </div> 
-                                   </div>
+                                    <div className="p-5 empty-item">
+                                        <div className="text-center">
+                                            <span className="avatar avatar-xl avatar-rounded bg-success-transparent">
+                                                <i className="ti ti-shopping-cart fs-2"></i>
+                                            </span>
+                                            <h6 className="fw-medium mb-1 mt-3">No items in your cart yet</h6>
+                                            <span className="mb-3 fw-normal fs-13 d-block">Add some to enjoy a seamless checkout experience! :)</span>
+                                        </div>
+                                    </div>
                                     //<div className="p-5 empty-item1">
                                     //    <div className="text-center">
                                     //        <span className="avatar avatar-xl avatar-rounded bg-secondary-transparent">
@@ -862,12 +876,12 @@ const Header = () => {
                                     <div className="d-flex align-items-start gap-2">
                                         <div className="lh-1">
                                             <span className="avatar avatar-sm bg-primary-transparent avatar-rounded">
-                                                <Image width={36} height={36} src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/faces/12.jpg`} alt="" />
+                                                <Image width={36} height={36} src={user?.photoURL || `${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/faces/12.jpg`} alt="" />
                                             </span>
                                         </div>
                                         <div>
-                                            <span className="d-block fw-semibold lh-1">Tom Phillip</span>
-                                            <span className="text-muted fs-12">tomphillip32@gmail.com</span>
+                                            <span className="d-block fw-semibold lh-1">{user?.displayName || 'User'}</span>
+                                            <span className="text-muted fs-12">{user?.email || 'user@example.com'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -896,7 +910,7 @@ const Header = () => {
                                             </li>
                                         </ul>
                                     </li>
-                                    <li><Link scroll={false} className="dropdown-item d-flex align-items-center" href="/"><i className="ti ti-logout me-2 fs-18"></i>Log Out</Link></li>
+                                    <li><Link scroll={false} className="dropdown-item d-flex align-items-center" href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}><i className="ti ti-logout me-2 fs-18"></i>Log Out</Link></li>
                                 </ul>
                             </Dropdown.Menu>
                         </Dropdown>

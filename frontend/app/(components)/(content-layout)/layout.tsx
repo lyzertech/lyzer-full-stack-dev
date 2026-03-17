@@ -6,6 +6,7 @@ import { data$, getState } from '@/shared/layouts-components/services/switcherSe
 import Sidebar from '@/shared/layouts-components/sidebar/sidebar'
 import Switcher from '@/shared/layouts-components/switcher/switcher'
 import React, { Fragment, useEffect, useRef, useState } from 'react'
+import { ProtectedRoute } from '@/shared/auth/ProtectedRoute'
 
 const layout = ({ children }: any) => {
 
@@ -38,21 +39,23 @@ const layout = ({ children }: any) => {
   let containerclass = variable.dataPageStyle === 'flat' ? "main-body-container" : ""
 
   return (
-    <Fragment>
-      <div ref={progressRef} className="progress-top-bar"></div>
-      <Switcher />
-      <div className='page'>
-        <Header />
-        <Sidebar />
-        <div className='main-content app-content'>
-        <div className={`container-fluid page-container ${containerclass}`}>
-            {children}
+    <ProtectedRoute requireAuth={true}>
+      <Fragment>
+        <div ref={progressRef} className="progress-top-bar"></div>
+        <Switcher />
+        <div className='page'>
+          <Header />
+          <Sidebar />
+          <div className='main-content app-content'>
+          <div className={`container-fluid page-container ${containerclass}`}>
+              {children}
+            </div>
           </div>
+          <Footer />
         </div>
-        <Footer />
-      </div>
-      <Backtotop />
-    </Fragment>
+        <Backtotop />
+      </Fragment>
+    </ProtectedRoute>
   )
 }
 

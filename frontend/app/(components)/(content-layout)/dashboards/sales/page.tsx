@@ -100,8 +100,8 @@ const Sales: React.FC<SalesProps> = () => {
             <Col xl={12}>
               <Card className="custom-card shadow-none card-bg-primary overflow-hidden dashboard-banner-card">
                 <Card.Body>
-                  <div className="dashboard-banner-card-background">
-                    <Image fill src="../../assets/images/media/backgrounds/8.png " alt="" />
+                  <div className="dashboard-banner-card-background position-relative">
+                    <Image fill src="../../assets/images/media/backgrounds/8.png" alt="" priority={true} />
                   </div>
                   <div className="d-flex align-items-center justify-content-between gap-3">
                     <div>
@@ -298,7 +298,7 @@ const Sales: React.FC<SalesProps> = () => {
               </div>
               <div className="d-flex flex-wrap gap-2">
                 <SpkDropdown Id="dropdownMenuButton1" Togglevariant="" Toggletext="Filters" Arrowicon={true} IconClass='ri-arrow-down-s-line align-middle ms-1 d-inline-block' Customtoggleclass="btn btn-outline-light btn-wave waves-effect waves-light no-caret">
-                <li><Dropdown.Item >New</Dropdown.Item></li>
+                  <li><Dropdown.Item >New</Dropdown.Item></li>
                   <li><Dropdown.Item >Popular</Dropdown.Item></li>
                   <li><Dropdown.Item >Relevant</Dropdown.Item></li>
                 </SpkDropdown>

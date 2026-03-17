@@ -2963,6 +2963,23 @@ ul.job-preferences-list {
 /* Start:: Crypto Wallet */
 [data-theme-mode="dark"] {
   .qr-image {
+  }
+
+  /* student id card */
+  .student-id-card {
+    border: 1px solid #e9ecef;
+    padding: 12px;
+    border-radius: 6px;
+    background: #ffffff;
+  }
+  .student-id-card .student-name {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .student-id-card .student-meta {
+    font-size: 0.9rem;
+    color: #6c757d;
+  }
     filter: invert(1);
   }
 }

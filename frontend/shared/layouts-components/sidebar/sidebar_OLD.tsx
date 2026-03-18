@@ -194,10 +194,10 @@ const Sidebar = () => {
     if (menuNav && mainContainer1) {
       const computedStyle = window.getComputedStyle(menuNav)
       const marginLeftValue = Math.ceil(
-        Number(computedStyle.marginLeft.split('px')[0]),
+        Number(computedStyle.marginLeft.split('px')[0])
       )
       const marginRightValue = Math.ceil(
-        Number(computedStyle.marginRight.split('px')[0]),
+        Number(computedStyle.marginRight.split('px')[0])
       )
       const check = menuNav.scrollWidth - mainContainer1.offsetWidth
 
@@ -259,11 +259,11 @@ const Sidebar = () => {
     if (menuNav && mainContainer1) {
       const marginLeftValue = Math.ceil(
         Number(
-          window.getComputedStyle(menuNav).marginInlineStart.split('px')[0],
-        ),
+          window.getComputedStyle(menuNav).marginInlineStart.split('px')[0]
+        )
       )
       const marginRightValue = Math.ceil(
-        Number(window.getComputedStyle(menuNav).marginInlineEnd.split('px')[0]),
+        Number(window.getComputedStyle(menuNav).marginInlineEnd.split('px')[0])
       )
       const check = menuNav.scrollWidth - mainContainer1.offsetWidth
       let mainContainer1Width = mainContainer1.offsetWidth
@@ -343,11 +343,11 @@ const Sidebar = () => {
     if (menuNav && mainContainer1) {
       const marginLeftValue = Math.ceil(
         Number(
-          window.getComputedStyle(menuNav).marginInlineStart.split('px')[0],
-        ),
+          window.getComputedStyle(menuNav).marginInlineStart.split('px')[0]
+        )
       )
       const marginRightValue = Math.ceil(
-        Number(window.getComputedStyle(menuNav).marginInlineEnd.split('px')[0]),
+        Number(window.getComputedStyle(menuNav).marginInlineEnd.split('px')[0])
       )
       const check: any = menuNav.scrollWidth - mainContainer1.offsetWidth
       let mainContainer1Width = mainContainer1.offsetWidth
@@ -513,7 +513,7 @@ const Sidebar = () => {
     event: any,
     targetObject: any,
     MenuItems = menuitems,
-    isChild = false,
+    isChild = false
   ) {
     const theme = getState()
     let element = event.target
@@ -587,16 +587,16 @@ const Sidebar = () => {
               targetObject.dirchange =
                 siblingULRect.left - siblingULRect.width - outterUlWidth + 150 <
                   0 &&
-                outterUlWidth < window.innerWidth &&
-                outterUlWidth + siblingULRect.width * 2 < window.innerWidth
+                  outterUlWidth < window.innerWidth &&
+                  outterUlWidth + siblingULRect.width * 2 < window.innerWidth
                   ? true
                   : false
             } else {
               targetObject.dirchange =
                 outterUlWidth + siblingULRect.right + siblingULRect.width + 50 >
                   window.innerWidth &&
-                siblingULRect.right >= 0 &&
-                outterUlWidth + siblingULRect.width * 2 < window.innerWidth
+                  siblingULRect.right >= 0 &&
+                  outterUlWidth + siblingULRect.width * 2 < window.innerWidth
                   ? true
                   : false
             }
@@ -645,7 +645,7 @@ const Sidebar = () => {
       if (item.children && item.children.length > 0) {
         const parent: any = findParent(
           (MENUITEMS = item.children),
-          targetObject,
+          targetObject
         )
         if (parent) {
           return parent
@@ -681,10 +681,10 @@ const Sidebar = () => {
           if (theme.dir == 'rtl') {
             if (
               siblingULRect.left - siblingULRect.width - outterUlWidth + 150 <
-                0 &&
+              0 &&
               outterUlWidth < window.innerWidth &&
               outterUlWidth + siblingULRect.width + siblingULRect.width <
-                window.innerWidth
+              window.innerWidth
             ) {
               item.dirchange = true
             } else {
@@ -693,10 +693,10 @@ const Sidebar = () => {
           } else {
             if (
               outterUlWidth + siblingULRect.right + siblingULRect.width + 50 >
-                window.innerWidth &&
+              window.innerWidth &&
               siblingULRect.right >= 0 &&
               outterUlWidth + siblingULRect.width + siblingULRect.width <
-                window.innerWidth
+              window.innerWidth
             ) {
               item.dirchange = true
             } else {
@@ -786,29 +786,33 @@ const Sidebar = () => {
           <Link
             scroll={false}
             href="/dashboards/sales/"
-            className="header-logo"
+            className="header-logo position-relative"
           >
             <Image
               fill
-              src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/brand-logos/desktop-logo.png`}
+              src={`${process.env.NODE_ENV === 'production' ? basePath : ''
+                }/assets/images/brand-logos/desktop-logo.png`}
               alt="logo"
               className="desktop-logo"
             />
             <Image
               fill
-              src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/brand-logos/toggle-dark.png`}
+              src={`${process.env.NODE_ENV === 'production' ? basePath : ''
+                }/assets/images/brand-logos/toggle-dark.png`}
               alt="logo"
               className="toggle-dark"
             />
             <Image
               fill
-              src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/brand-logos/desktop-dark.png`}
+              src={`${process.env.NODE_ENV === 'production' ? basePath : ''
+                }/assets/images/brand-logos/desktop-dark.png`}
               alt="logo"
               className="desktop-dark"
             />
             <Image
               fill
-              src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/brand-logos/toggle-logo.png`}
+              src={`${process.env.NODE_ENV === 'production' ? basePath : ''
+                }/assets/images/brand-logos/toggle-logo.png`}
               alt="logo"
               className="toggle-logo"
             />
@@ -839,7 +843,9 @@ const Sidebar = () => {
               {MENUITEMS.map((list: any, index: any) => (
                 <Fragment key={index}>
                   <li
-                    className={` ${list.menutitle ? 'slide__category' : ''} ${list.type === 'link' ? 'slide' : ''} ${list.type === 'sub' ? 'slide has-sub' : ''} ${list.active ? 'open' : ''}  ${list?.selected ? 'active' : ''}  `}
+                    className={` ${list.menutitle ? 'slide__category' : ''} ${list.type === 'link' ? 'slide' : ''
+                      } ${list.type === 'sub' ? 'slide has-sub' : ''} ${list.active ? 'open' : ''
+                      }  ${list?.selected ? 'active' : ''}  `}
                   >
                     {list.menutitle ? (
                       <span className="category-name">{list.menutitle}</span>
@@ -849,10 +855,14 @@ const Sidebar = () => {
                     {list.type === 'link' ? (
                       <Link
                         href={list.path}
-                        className={`side-menu__item  ${list.selected ? 'active' : ''}`}
+                        className={`side-menu__item  ${list.selected ? 'active' : ''
+                          }`}
                       >
                         <span
-                          className={`${local_varaiable?.dataVerticalStyle == 'doublemenu' ? '' : 'd-none'}`}
+                          className={`${local_varaiable?.dataVerticalStyle == 'doublemenu'
+                            ? ''
+                            : 'd-none'
+                            }`}
                         >
                           <SpkTooltips placement="auto" title={list.title}>
                             <div>{list.icon}</div>
@@ -904,13 +914,14 @@ const Sidebar = () => {
                   </li>
                 </Fragment>
               ))}
-              <li className="d-none">
+              <li>
                 <ul className="slide-menu child1 doublemenu_slide-menu">
                   <li className="text-center p-3 text-fixed-white">
                     <div className="doublemenu_slide-menu-background">
                       <Image
                         fill
-                        src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/media/backgrounds/13.png`}
+                        src={`${process.env.NODE_ENV === 'production' ? basePath : ''
+                          }/assets/images/media/backgrounds/13.png`}
                         alt=""
                         className=""
                       />
@@ -921,7 +932,10 @@ const Sidebar = () => {
                         <span className="avatar avatar-lg p-1">
                           <Image
                             fill
-                            src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/media/media-80.png`}
+                            src={`${process.env.NODE_ENV === 'production'
+                              ? basePath
+                              : ''
+                              }/assets/images/media/media-80.png`}
                             alt=""
                             className=""
                           />
@@ -1268,7 +1282,8 @@ const Sidebar = () => {
                   <span className="avatar avatar-md avatar-rounded">
                     <Image
                       fill
-                      src={`${process.env.NODE_ENV === 'production' ? basePath : ''}/assets/images/faces/10.jpg`}
+                      src={`${process.env.NODE_ENV === 'production' ? basePath : ''
+                        }/assets/images/faces/10.jpg`}
                       alt=""
                       className=""
                     />

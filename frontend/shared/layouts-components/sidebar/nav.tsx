@@ -333,9 +333,18 @@ export const MENUITEMS: any = [
         dirchange: false,
         title: 'Echart Charts',
       },
+      {
+        path: '/labs/customer',
+        type: 'link',
+        icon: Svgicons.Echartsicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Customer List',
+      },
     ],
   },
-  
+
   {
     menutitle: 'MONITORING',
   },

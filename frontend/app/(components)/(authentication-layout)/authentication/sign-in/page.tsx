@@ -70,7 +70,7 @@ const SignIn: React.FC = () => {
 
             // Redirect to dashboard after successful login
             setTimeout(() => {
-                router.push('/dashboards/sales/');
+                router.push('/school/dashboard/');
             }, 1500);
         } catch (error: any) {
             const errorMessage = error.message || 'Failed to sign in';
@@ -97,7 +97,7 @@ const SignIn: React.FC = () => {
                 autoClose: 2000,
             });
             setTimeout(() => {
-                router.push('/dashboards/sales/');
+                router.push('/school/dashboard/');
             }, 1500);
         } catch (error: any) {
             toast.error(error.message || 'Failed to sign in with Google', {
@@ -118,7 +118,7 @@ const SignIn: React.FC = () => {
                 autoClose: 2000,
             });
             setTimeout(() => {
-                router.push('/dashboards/sales/');
+                router.push('/school/dashboard/');
             }, 1500);
         } catch (error: any) {
             toast.error(error.message || 'Failed to sign in with Facebook', {

@@ -12,6 +12,8 @@ import {
   getState,
 } from '@/shared/layouts-components/services/switcherServices'
 
+import { ToastContainer } from 'react-toastify';
+
 const RootLayout = ({ children, }: any) => {
   const [pageloading, setpageloading] = useState(false);
 
@@ -96,6 +98,7 @@ const RootLayout = ({ children, }: any) => {
             </Initialload.Provider>
           </AuthProvider>
         </Provider>
+        <ToastContainer />
       </body>
     </html>
   )

@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => CheckRole::class,
+            'auth.session' => \App\Http\Middleware\CustomAuthSession::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

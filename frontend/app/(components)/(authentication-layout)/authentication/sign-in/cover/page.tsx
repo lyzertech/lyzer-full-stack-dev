@@ -45,7 +45,7 @@ const Cover: React.FC<CoverProps> = () => {
     const handleSubmit = (e: any) => {
         e.preventDefault();
         if (validate()) {
-            router.push('/dashboards/sales/');
+            router.push('/school/dashboard/');
             toast.success('Save Password successful', {
                 position: 'top-right',
                 autoClose: 1500,

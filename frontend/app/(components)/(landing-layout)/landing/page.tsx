@@ -68,7 +68,7 @@ const Landing = () => {
     const overlayElementRef: any = useRef(null);
 
     function menuClose() {
-        if (window.innerWidth <= 992) {
+        if (typeof window !== 'undefined' && window.innerWidth <= 992) {
             const newState = {
                 toggled: "close"
             }
@@ -80,9 +80,8 @@ const Landing = () => {
     }
     //ToggleNavigation Function
 
-    const Datawidth = window.innerWidth
     function toggleNavigation() {
-        if (Datawidth <= 992) {
+        if (typeof window !== 'undefined' && window.innerWidth <= 992) {
             const currentToggled = variable
             const newState = {
                 toggled: currentToggled === 'open' ? 'close' : 'open',

@@ -1,73 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromRequest } from '@/lib/auth/session';
+import { cookies } from 'next/headers';
 
 export const runtime = 'nodejs';
 
+const LARAVEL_API_URL = process.env.LARAVEL_API_URL || 'http://localhost:8000';
+
 /**
  * GET /api/auth/me
- * 
- * Returns the current authenticated user based on session token
+ *
+ * Proxies to Laravel GET /api/me using the stored Sanctum token cookie.
+ * Returns the current authenticated user or null.
  */
 export async function GET(req: NextRequest) {
   try {
-    const result = await getSessionFromRequest();
+    const cookieStore = await cookies();
+    const token = cookieStore.get('laravel_token')?.value;
 
-    if (!result.valid) {
-      // Return 200 with null user to avoid console errors
-      return NextResponse.json(
-        { success: false, user: null },
-        { status: 200 }
-      );
+    if (!token) {
+      return NextResponse.json({ success: false, user: null }, { status: 200 });
     }
 
-    // Update last activity
-    try {
-      const prismaModule = await import('@/lib/prisma');
-      const prisma = prismaModule.prisma;
+    const laravelRes = await fetch(`${LARAVEL_API_URL}/api/v1/me`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-      await prisma.userSession.update({
-        where: { id: BigInt(result.session.id) },
-        data: { lastActivityAt: new Date() },
-      });
-
-      await prisma.user.update({
-        where: { id: BigInt(result.session.userId) },
-        data: { lastActivityAt: new Date() },
-      });
-    } catch (updateError) {
-      console.error('Error updating last activity:', updateError);
-      // Non-critical, continue
+    if (!laravelRes.ok) {
+      // Token is invalid / expired — clear cookie
+      cookieStore.delete('laravel_token');
+      return NextResponse.json({ success: false, user: null }, { status: 200 });
     }
 
+    const laravelUser = await laravelRes.json();
+
+    // Map Laravel user fields to AuthUser shape
     return NextResponse.json(
       {
         success: true,
-        user: result.user,
+        user: {
+          id: String(laravelUser.id),
+          email: laravelUser.email,
+          displayName: laravelUser.name,
+          role: laravelUser.role,
+          emailVerified: true,
+          photoUrl: null,
+          roles: laravelUser.role
+            ? [{ role: { slug: laravelUser.role, permissions: [] } }]
+            : [],
+        },
       },
       { status: 200 }
     );
   } catch (error: any) {
     console.error('GET /api/auth/me error:', error);
-    console.error('Error stack:', error.stack);
-
-    // Handle Prisma client not generated
-    if (error.message?.includes('PrismaClient') || error.message?.includes('Cannot find module')) {
-      return NextResponse.json(
-        { error: 'Database client not initialized. Please run: npx prisma generate' },
-        { status: 500 }
-      );
-    }
-
-    // Return error in JSON format
     return NextResponse.json(
-      {
-        error: 'Failed to get user',
-        details: error.message || 'Unknown error',
-        code: error.code || 'UNKNOWN_ERROR',
-        name: error.name || 'Error'
-      },
+      { error: 'Failed to get user', details: error.message },
       { status: 500 }
     );
   }
 }
-

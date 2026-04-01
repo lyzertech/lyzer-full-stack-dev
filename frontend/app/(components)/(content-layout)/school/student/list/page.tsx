@@ -44,10 +44,16 @@ const StudentListPage: React.FC = () => {
         return
       }
       const data = await res.json()
-      setSimpleStudents(data)
+      if (Array.isArray(data)) {
+          setSimpleStudents(data)
+      } else {
+          setSimpleError(data?.error || data?.message || 'Invalid API response format')
+          setSimpleStudents([])
+      }
     } catch (err: any) {
       console.error('fetchSimpleStudents error:', err)
       setSimpleError(err.message || 'Failed to fetch simple students')
+      setSimpleStudents([])
     } finally {
       setLoadingSimple(false)
     }
@@ -73,10 +79,16 @@ const StudentListPage: React.FC = () => {
         return
       }
       const data = await res.json()
-      setCompleteStudents(data)
+      if (Array.isArray(data)) {
+          setCompleteStudents(data)
+      } else {
+          setCompleteError(data?.error || data?.message || 'Invalid API response format')
+          setCompleteStudents([])
+      }
     } catch (err: any) {
       console.error('fetchCompleteStudents error:', err)
       setCompleteError(err.message || 'Failed to fetch complete students')
+      setCompleteStudents([])
     } finally {
       setLoadingComplete(false)
     }

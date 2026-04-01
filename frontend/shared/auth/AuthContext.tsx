@@ -2,9 +2,9 @@
 
 /**
  * AuthContext - Global Authentication Context
- * 
- * Provides authentication state and methods throughout the application
- * Uses database-based authentication (no Firebase)
+ *
+ * Provides authentication state and methods throughout the application.
+ * Authentication is handled by Laravel (Sanctum) via Next.js proxy API routes.
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -46,14 +46,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.user) {
-          // Map database user to AuthUser format
+          // Map Laravel user to AuthUser format
           const authUser: AuthUser = {
-            uid: data.user.id.toString(),
+            uid: String(data.user.id),
             email: data.user.email,
             displayName: data.user.displayName,
-            photoURL: data.user.photoUrl,
-            emailVerified: data.user.emailVerified,
-            role: data.user.roles?.[0]?.role?.slug,
+            photoURL: data.user.photoUrl ?? null,
+            emailVerified: data.user.emailVerified ?? true,
+            role: data.user.role,
             permissions: data.user.roles?.flatMap((ur: any) =>
               ur.role?.permissions?.map((p: any) => p.permission?.slug) || []
             ) || [],
@@ -129,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /**
    * Login with email and password
    */
-  const login = useCallback(async (email: string, password: string): Promise<void> => {
+  const login = useCallback(async (email: string, password: string): Promise<AuthUser> => {
     try {
       setLoading(true);
 
@@ -160,20 +160,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.success && data.user) {
-        // Map database user to AuthUser format
+        // Map Laravel user to AuthUser format
         const authUser: AuthUser = {
-          uid: data.user.id.toString(),
+          uid: String(data.user.id),
           email: data.user.email,
           displayName: data.user.displayName,
-          photoURL: data.user.photoUrl,
-          emailVerified: data.user.emailVerified,
-          role: data.user.roles?.[0]?.role?.slug,
-          permissions: data.user.roles?.flatMap((ur: any) =>
-            ur.role?.permissions?.map((p: any) => p.permission?.slug) || []
-          ) || [],
+          photoURL: data.user.photoUrl ?? null,
+          emailVerified: data.user.emailVerified ?? true,
+          role: data.user.role,
+          permissions: [],
         };
         setUser(authUser);
+        return authUser;
       }
+      
+      throw new Error('Invalid response from server');
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to sign in';
       throw new Error(errorMessage);
@@ -185,14 +186,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /**
    * Login with Google (not implemented - can be added later)
    */
-  const loginWithGoogle = useCallback(async (): Promise<void> => {
+  const loginWithGoogle = useCallback(async (): Promise<AuthUser> => {
     throw new Error('Google login is not yet implemented. Please use email/password authentication.');
   }, []);
 
   /**
    * Login with Facebook (not implemented - can be added later)
    */
-  const loginWithFacebook = useCallback(async (): Promise<void> => {
+  const loginWithFacebook = useCallback(async (): Promise<AuthUser> => {
     throw new Error('Facebook login is not yet implemented. Please use email/password authentication.');
   }, []);
 
@@ -202,6 +203,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
+
+      // Clear any leftover toasts from previous mounts (like "Login successful")
+      toast.dismiss();
 
       await fetch('/api/auth/signout', {
         method: 'POST',

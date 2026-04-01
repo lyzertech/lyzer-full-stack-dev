@@ -49,7 +49,13 @@ const JobsTable: React.FC<{ teachers?: Teacher[] }> = ({ teachers }) => {
         }
 
         const json = await res.json()
-        setData(json)
+        if (Array.isArray(json)) {
+            setData(json)
+        } else {
+            console.error('API did not return an array:', json)
+            setData([])
+            setError(json?.error || json?.message || 'Invalid API response format')
+        }
       } catch (err: any) {
         console.error(err)
         setError('Failed to load teachers')

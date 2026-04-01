@@ -25,7 +25,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   redirectTo = '/',   // Default: login page
   requireAuth = true
 }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -41,10 +41,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     } else {
       // Public route (like login) - redirect to dashboard if already authenticated
       if (isAuthenticated) {
-        router.push('/dashboards/sales');
+        if (user && user.role === 'finance') {
+          router.push('/finance/dashboard');
+        } else if (user && user.role === 'school') {
+          router.push('/school/dashboard');
+        } else {
+          router.push('/dashboards/sales');
+        }
       }
     }
-  }, [isAuthenticated, loading, router, redirectTo, requireAuth, pathname]);
+  }, [isAuthenticated, loading, router, redirectTo, requireAuth, pathname, user]);
 
   // Show loading state while checking auth
   if (loading) {

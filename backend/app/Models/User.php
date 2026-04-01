@@ -15,15 +15,29 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasApiTokens;
 
     /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'auth_users';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
+        'display_name',
         'email',
         'password',
-        'role',
+        'email_verified',
+        'is_active',
+        'firebase_uid',
+        'photo_url',
+        'phone_number',
+        'phone_verified',
     ];
 
     /**

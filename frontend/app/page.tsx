@@ -48,7 +48,7 @@ const SignIn = () => {
     }
 
     try {
-      await login(values.email, values.password);
+      const user = await login(values.email, values.password);
 
       toast.success('Login successful', {
         position: 'top-right',
@@ -61,7 +61,13 @@ const SignIn = () => {
 
       // Redirect handled by ProtectedRoute, but explicit push is safer for UX delay
       setTimeout(() => {
-        router.push('/dashboards/sales');
+        if (user && user.role === 'finance') {
+          router.push('/finance/dashboard');
+        } else if (user && user.role === 'school') {
+          router.push('/school/dashboard');
+        } else {
+          router.push('/dashboards/sales');
+        }
       }, 1000);
 
     } catch (err: any) {
@@ -80,13 +86,19 @@ const SignIn = () => {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      await loginWithGoogle();
+      const user = await loginWithGoogle();
       toast.success('Login successful', {
         position: 'top-right',
         autoClose: 1500,
       });
       setTimeout(() => {
-        router.push('/dashboards/sales');
+        if (user && user.role === 'finance') {
+          router.push('/finance/dashboard');
+        } else if (user && user.role === 'school') {
+          router.push('/school/dashboard');
+        } else {
+          router.push('/dashboards/sales');
+        }
       }, 1000);
     } catch (err: any) {
       toast.error(err.message || 'Failed to sign in with Google', {
@@ -101,13 +113,19 @@ const SignIn = () => {
   const handleFacebookLogin = async () => {
     try {
       setLoading(true);
-      await loginWithFacebook();
+      const user = await loginWithFacebook();
       toast.success('Login successful', {
         position: 'top-right',
         autoClose: 1500,
       });
       setTimeout(() => {
-        router.push('/dashboards/sales');
+        if (user && user.role === 'finance') {
+          router.push('/finance/dashboard');
+        } else if (user && user.role === 'school') {
+          router.push('/school/dashboard');
+        } else {
+          router.push('/dashboards/sales');
+        }
       }, 1000);
     } catch (err: any) {
       toast.error(err.message || 'Failed to sign in with Facebook', {
@@ -247,7 +265,6 @@ const SignIn = () => {
             </Col>
           </Row>
         </div>
-        <ToastContainer />
       </Fragment>
     </ProtectedRoute>
   )

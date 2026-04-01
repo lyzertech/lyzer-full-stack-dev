@@ -23,16 +23,16 @@ class ModuleServiceProvider extends ServiceProvider
 
             if (file_exists($routesFile)) {
                 Route::domain($module . '.' . config('app.base_domain', 'lyzer.test'))
-                    ->middleware(['api', 'auth:sanctum', 'role:' . $role])
-                    ->prefix('api/' . $module)
+                    ->middleware(['api', 'auth.session', 'role:' . $role])
+                    ->prefix('api/v1/' . $module)
                     ->namespace("App\\Modules\\" . ucfirst($module) . "\\Controllers")
                     ->group($routesFile);
             }
         }
 
-        // Public auth routes (no subdomain restriction)
+        // Public auth routes — versioned under /api/v1/
         Route::middleware('api')
-            ->prefix('api/auth')
+            ->prefix('api/v1')
             ->group(base_path('routes/auth.php'));
     }
 }

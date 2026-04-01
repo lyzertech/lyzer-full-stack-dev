@@ -14,13 +14,14 @@ import type { NextRequest } from 'next/server';
 // Routes that require authentication
 const PROTECTED_ROUTES = [
   '/dashboards',
+  '/school',
 ];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Get session token from cookies
-  const sessionToken = request.cookies.get('session_token')?.value;
+  const sessionToken = request.cookies.get('laravel_token')?.value;
   const hasSessionCookie = !!sessionToken;
 
   // Check if route is protected (requires auth)

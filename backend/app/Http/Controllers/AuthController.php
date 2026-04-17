@@ -5,11 +5,27 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Active role slug from auth_user_roles + auth_roles (same source as login).
+     */
+    private function activeRoleSlugForUser(int $userId): string
+    {
+        $roleRecord = DB::table('auth_user_roles')
+            ->join('auth_roles', 'auth_user_roles.role_id', '=', 'auth_roles.id')
+            ->where('auth_user_roles.user_id', $userId)
+            ->where('auth_user_roles.is_active', 1)
+            ->select('auth_roles.slug')
+            ->first();
+
+        return $roleRecord ? (string) $roleRecord->slug : 'user';
+    }
+
     public function login(Request $request): JsonResponse
     {
         $request->validate([
@@ -51,14 +67,7 @@ class AuthController extends Controller
             'updated_at' => now()
         ]);
 
-        $roleRecord = \Illuminate\Support\Facades\DB::table('auth_user_roles')
-            ->join('auth_roles', 'auth_user_roles.role_id', '=', 'auth_roles.id')
-            ->where('auth_user_roles.user_id', $user->id)
-            ->where('auth_user_roles.is_active', 1)
-            ->select('auth_roles.slug')
-            ->first();
-
-        $roleSlug = $roleRecord ? $roleRecord->slug : 'user';
+        $roleSlug = $this->activeRoleSlugForUser((int) $user->id);
 
         return response()->json([
             'token' => $token,
@@ -85,7 +94,23 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        // Custom token retrieval logic if needed, but returning user
-        return response()->json($request->user());
+        /** @var User|null $user */
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $roleSlug = $this->activeRoleSlugForUser((int) $user->id);
+
+        // Same shape as login `user` key so Next `/api/auth/me` mapping stays consistent.
+        return response()->json([
+            'id'         => $user->id,
+            'email'      => $user->email,
+            'name'       => $user->display_name ?? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+            'role'       => $roleSlug,
+            'roles'      => [
+                ['role' => ['slug' => $roleSlug, 'permissions' => []]],
+            ],
+        ]);
     }
 }

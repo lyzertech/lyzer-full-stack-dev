@@ -32,6 +32,218 @@ const badgeSuccess = (
   </SpkBadge>
 )
 
+export const MENUITEMS_School: any = [
+  {
+    menutitle: 'SCHOOL',
+  },
+
+  {
+    title: 'School',
+    icon: Svgicons.Schoolicon,
+    type: 'sub',
+    active: false,
+    dirchange: false,
+    children: [
+      {
+        path: '/school/dashboard',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Dashboard',
+      },
+
+      {
+        title: 'Teacher',
+        type: 'sub',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        dirchange: false,
+        children: [
+          {
+            path: '/school/teacher/list',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'List',
+          },
+          {
+            path: '/school/teacher/schedule',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Schedule',
+          },
+        ],
+      },
+
+      {
+        title: 'Student',
+        type: 'sub',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        dirchange: false,
+        children: [
+          {
+            path: '/school/student/list',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'List',
+          },
+          {
+            path: '/school/student/timetable',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Lesson Timetable',
+          },
+        ],
+      },
+
+      {
+        path: '/school/attendance',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Attendance',
+      },
+      {
+        path: '/school/grade',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Grade',
+      },
+      {
+        path: '/school/timetable',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Lesson Timetable',
+      },
+      {
+        path: '/school/announcement',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Announcement',
+      },
+
+      {
+        path: '/dashboards/medical',
+        type: 'link',
+        icon: Svgicons.Medicalicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Medical',
+      },
+      {
+        path: '/dashboards/pos-system',
+        type: 'link',
+        icon: Svgicons.Posicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'POS System',
+      },
+
+      {
+        title: 'Setting',
+        type: 'sub',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        dirchange: false,
+        children: [
+          {
+            path: '/school/setting/general',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'General',
+          },
+        ],
+      },
+    ],
+  },
+]
+
+export const MENUITEMS_Finance: any = [
+  {
+    menutitle: 'HOME',
+  },
+
+  {
+    title: 'Finance',
+    icon: Svgicons.Pricingicon,
+    type: 'sub',
+    active: false,
+    dirchange: false,
+    children: [
+      {
+        path: '/finance/dashboard',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Dashboard',
+      },
+      {
+        path: '/finance/banks',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Banks',
+      },
+      {
+        path: '/finance/accounts',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Accounts',
+      },
+      {
+        path: '/finance/categories',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Categories',
+      },
+      {
+        path: '/finance/transactions',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Transactions',
+      },
+    ],
+  },
+]
+
 export const MENUITEMS: any = [
   {
     menutitle: 'SCHOOL',
@@ -346,25 +558,92 @@ export const MENUITEMS: any = [
   },
 
   {
-    menutitle: 'MONITORING',
+    menutitle: 'SALES',
   },
 
   {
-    title: 'Monitoring',
+    title: 'Sales',
     icon: Svgicons.Advancedicon,
     type: 'sub',
     dirchange: false,
     children: [
       {
-        path: '/monitoring',
-        icon: Svgicons.Advancedicon,
+        title: 'CRM',
+        icon: Svgicons.Crmicon,
+        type: 'sub',
+        menusub: true,
+        active: false,
+        selected: false,
+        dirchange: false,
+        children: [
+          {
+            path: '/sales/crm/dashboard',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Dashboard',
+          },
+          {
+            path: '/sales/crm/visit-report-aii',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Visit Report AII',
+          },
+          {
+            path: '/sales/crm/visit-report-sep',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Visit Report SEP',
+          },
+        ],
+      },
+      {
+        path: '/sales/customer/list',
+        icon: Svgicons.Teamicon,
         type: 'link',
         active: false,
         selected: false,
         dirchange: false,
-        title: 'Monitoring',
+        title: 'Customer List',
+      },
+      {
+        path: '/sales/products',
+        icon: Svgicons.Stockicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Products',
+      },
+      {
+        path: '/sales/quotation',
+        icon: Svgicons.Invoiceicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Quotation',
       },
     ],
+  },
+
+  {
+    menutitle: 'MONITORING',
+  },
+
+  {
+    path: '/monitoring',
+    icon: Svgicons.Chartsicon,
+    title: 'Monitoring',
+    type: 'link',
+    active: false,
+    dirchange: false,
+    selected: false,
   },
 
   {
@@ -379,6 +658,49 @@ export const MENUITEMS: any = [
     active: false,
     dirchange: false,
     selected: false,
+  },
+
+  {
+    menutitle: 'ADMIN',
+  },
+
+  {
+    title: 'Users',
+    icon: Svgicons.Teamicon,
+    type: 'sub',
+    active: false,
+    dirchange: false,
+    children: [
+      {
+        path: '/user/dashboard',
+        type: 'link',
+        icon: Svgicons.Profileicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Dashboard',
+      },
+
+      {
+        path: '/user/role',
+        type: 'link',
+        icon: Svgicons.Teamicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Role',
+      },
+
+      {
+        path: '/user/permission',
+        type: 'link',
+        icon: Svgicons.Profilesettingicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Permission',
+      },
+    ],
   },
 
   {
@@ -1009,7 +1331,7 @@ export const MENUITEMS: any = [
           {
             path: '',
             type: 'empty',
-            ctive: false,
+            active: false,
             selected: false,
             dirchange: false,
             title: 'Nested-2-2',
@@ -2241,3 +2563,5 @@ export const MENUITEMS: any = [
     ],
   },
 ]
+
+export const MENUITEMS_SCHOOL: any = [MENUITEMS[0], MENUITEMS[1]]

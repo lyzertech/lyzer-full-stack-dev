@@ -20,6 +20,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  * Wraps the application and provides authentication state and methods
  */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const resolveRoleSlug = (rawUser: any): string | undefined => {
+    const directRole =
+      typeof rawUser?.role === 'string'
+        ? rawUser.role
+        : rawUser?.role?.slug || rawUser?.role?.name;
+    const nestedRole = rawUser?.roles?.[0]?.role?.slug || rawUser?.roles?.[0]?.role?.name;
+    const role = directRole || nestedRole;
+    return typeof role === 'string' ? role.toLowerCase() : undefined;
+  };
+
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [initialized, setInitialized] = useState<boolean>(false);
@@ -53,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             displayName: data.user.displayName,
             photoURL: data.user.photoUrl ?? null,
             emailVerified: data.user.emailVerified ?? true,
-            role: data.user.role,
+            role: resolveRoleSlug(data.user),
             permissions: data.user.roles?.flatMap((ur: any) =>
               ur.role?.permissions?.map((p: any) => p.permission?.slug) || []
             ) || [],
@@ -167,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: data.user.displayName,
           photoURL: data.user.photoUrl ?? null,
           emailVerified: data.user.emailVerified ?? true,
-          role: data.user.role,
+          role: resolveRoleSlug(data.user),
           permissions: [],
         };
         setUser(authUser);

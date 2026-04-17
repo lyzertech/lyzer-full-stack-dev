@@ -1,7 +1,7 @@
 'use client'
 
-import React, { Fragment, useEffect, useRef, useState } from 'react'
-import { MENUITEMS } from './nav'
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { MENUITEMS, MENUITEMS_Finance, MENUITEMS_SCHOOL } from './nav'
 import { catchError, map, of } from 'rxjs'
 import Link from 'next/link'
 import Menuloop from './menuloop'
@@ -11,8 +11,41 @@ import { usePathname } from 'next/navigation'
 import { basePath } from '@/next.config'
 import Image from 'next/image'
 import SpkTooltips from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-tooltips'
+import { useAuth } from '@/shared/auth/AuthContext'
+
+const normalizePathname = (pathname: string) =>
+  pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+
+const hasPermissionPrefix = (permissions: any[], prefix: string) =>
+  (permissions || []).some((permission: any) =>
+    String(permission || '')
+      .toLowerCase()
+      .startsWith(prefix),
+  )
 
 const Sidebar = () => {
+  const { user, loading } = useAuth()
+  const normalizedRole = String(user?.role || '').toLowerCase()
+  const permissions = user?.permissions || []
+  const hasSchoolPermission = hasPermissionPrefix(permissions, 'school')
+  const isSchoolRole =
+    normalizedRole === 'school' ||
+    normalizedRole.includes('school') ||
+    hasSchoolPermission
+  const hasFinancePermission = hasPermissionPrefix(permissions, 'finance')
+  const isFinanceRole =
+    normalizedRole === 'finance' ||
+    normalizedRole.includes('finance') ||
+    hasFinancePermission
+  const availableMenuItems = useMemo(
+    () =>
+      isSchoolRole
+        ? MENUITEMS_SCHOOL
+        : isFinanceRole
+          ? MENUITEMS_Finance
+          : MENUITEMS,
+    [isSchoolRole, isFinanceRole],
+  )
   let [variable, setVariable] = useState(getState())
   const local_varaiable = variable
 
@@ -23,7 +56,7 @@ const Sidebar = () => {
     return () => subscription.unsubscribe()
   }, [])
 
-  const [menuitems, setMenuitems] = useState(MENUITEMS)
+  const [menuitems, setMenuitems] = useState<any[]>([])
 
   function closeMenuFn() {
     const closeMenuRecursively = (items: any) => {
@@ -32,7 +65,7 @@ const Sidebar = () => {
         closeMenuRecursively(item.children)
       })
     }
-    closeMenuRecursively(MENUITEMS)
+    closeMenuRecursively(menuitems)
     setMenuitems((arr: any) => [...arr])
   }
 
@@ -401,14 +434,23 @@ const Sidebar = () => {
   let hasParent = false
   let hasParentLevel = 0
 
-  function setSubmenu(event: any, targetObject: any, MENUITEMS = menuitems) {
-    const theme = getState()
+  /**
+   * rootMenu: top-level array (MENUITEMS / school subset) for findParent / URL sync.
+   * MENUITEMS arg: current level being walked (must not default to React state — often stale right after setMenuitems).
+   */
+  function setSubmenu(
+    event: any,
+    targetObject: any,
+    MENUITEMS: any,
+    rootMenu: any,
+  ) {
+    const list = MENUITEMS || []
     if (!event?.ctrlKey) {
-      for (const item of MENUITEMS) {
+      for (const item of list) {
         if (item === targetObject) {
           item.active = true
           item.selected = true
-          setMenuAncestorsActive(item)
+          setMenuAncestorsActive(item, rootMenu)
         } else if (!item.active && !item.selected) {
           item.active = false // Set active to false for items not matching the target
           item.selected = false // Set active to false for items not matching the target
@@ -416,35 +458,16 @@ const Sidebar = () => {
           removeActiveOtherMenus(item)
         }
         if (item.children && item.children.length > 0) {
-          setSubmenu(event, targetObject, item.children)
+          setSubmenu(event, targetObject, item.children, rootMenu)
         }
       }
     }
 
     setMenuitems((arr: any) => [...arr])
   }
-  function getParentObject(obj: any, childObject: any) {
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        if (
-          typeof obj[key] === 'object' &&
-          JSON.stringify(obj[key]) === JSON.stringify(childObject)
-        ) {
-          return obj // Return the parent object
-        }
-        if (typeof obj[key] === 'object') {
-          const parentObject: any = getParentObject(obj[key], childObject)
-          if (parentObject !== null) {
-            return parentObject
-          }
-        }
-      }
-    }
-    return null // Object not found
-  }
-  function setMenuAncestorsActive(targetObject: any) {
-    const parent = getParentObject(menuitems, targetObject)
-    const theme = getState()
+  function setMenuAncestorsActive(targetObject: any, rootMenu: any) {
+    const parent = findParent(rootMenu, targetObject)
+    const theme = variable
     if (parent) {
       if (hasParentLevel > 2) {
         hasParent = true
@@ -452,14 +475,14 @@ const Sidebar = () => {
       parent.active = true
       parent.selected = true
       hasParentLevel += 1
-      setMenuAncestorsActive(parent)
-    } else if (!hasParent) {
-      if (theme.dataVerticalStyle == 'doublemenu') {
-        const newState = {
-          toggled: 'double-menu-close',
-        }
-        setState(newState)
+      // Double Menu: keep second column open (same as setAncestorsActive on click)
+      if (parent.active && theme.dataVerticalStyle === 'doublemenu') {
+        setState({
+          ...theme,
+          toggled: 'double-menu-open',
+        })
       }
+      setMenuAncestorsActive(parent, rootMenu)
     }
   }
   function removeActiveOtherMenus(item: any) {
@@ -480,33 +503,39 @@ const Sidebar = () => {
     }
   }
   //
-  function setMenuUsingUrl(currentPath: any) {
+  function setMenuUsingUrl(currentPath: any, menuRoot: any) {
+    if (!menuRoot?.length) return
     hasParent = false
     hasParentLevel = 1
     // Check current url and trigger the setSidemenu method to active the menu.
-    const setSubmenuRecursively = (items: any) => {
-      items?.forEach((item: any) => {
+    const setSubmenuRecursively = (nodes: any) => {
+      nodes?.forEach((item: any) => {
         if (item.path == '') {
         } else if (item.path === currentPath) {
-          setSubmenu(null, item)
+          setSubmenu(null, item, menuRoot, menuRoot)
         }
         setSubmenuRecursively(item.children)
       })
     }
-    setSubmenuRecursively(MENUITEMS)
+    setSubmenuRecursively(menuRoot)
   }
   const [previousUrl, setPreviousUrl] = useState('/')
 
   useEffect(() => {
-    const currentPath = pathname.endsWith('/')
-      ? pathname.slice(0, -1)
-      : pathname
+    if (loading) return
+    setMenuitems(availableMenuItems)
+    const currentPath = normalizePathname(pathname)
+    setMenuUsingUrl(currentPath, availableMenuItems)
+  }, [loading, availableMenuItems, pathname])
+
+  useEffect(() => {
+    const currentPath = normalizePathname(pathname)
 
     if (currentPath !== previousUrl) {
-      setMenuUsingUrl(currentPath)
+      setMenuUsingUrl(currentPath, menuitems)
       setPreviousUrl(currentPath)
     }
-  }, [pathname])
+  }, [pathname, menuitems])
 
   //
   function toggleSidemenu(
@@ -836,7 +865,7 @@ const Sidebar = () => {
             <ul className="main-menu" onClick={() => Sideclick()}>
               {/* <!-- Start::slide --> */}
 
-              {MENUITEMS.map((list: any, index: any) => (
+              {menuitems.map((list: any, index: any) => (
                 <Fragment key={index}>
                   <li
                     className={` ${list.menutitle ? 'slide__category' : ''} ${list.type === 'link' ? 'slide' : ''} ${list.type === 'sub' ? 'slide has-sub' : ''} ${list.active ? 'open' : ''}  ${list?.selected ? 'active' : ''}  `}

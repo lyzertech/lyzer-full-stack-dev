@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Modules\Auth\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -172,6 +173,38 @@ class UserDashboardController extends Controller
                 'email' => $user->email,
                 'name' => $name,
                 'status' => $user->status,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Create a new role in auth_roles.
+     */
+    public function storeRole(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'slug' => ['required', 'string', 'max:100', 'unique:auth_roles,slug'],
+            'description' => ['nullable', 'string'],
+            'is_system' => ['boolean']
+        ]);
+
+        $roleId = DB::table('auth_roles')->insertGetId([
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'description' => $validated['description'] ?? null,
+            'is_system' => $validated['is_system'] ?? 0,
+            'is_active' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'data' => [
+                'id' => $roleId,
+                'name' => $validated['name'],
+                'slug' => $validated['slug'],
+                'description' => $validated['description'] ?? null,
             ],
         ], 201);
     }

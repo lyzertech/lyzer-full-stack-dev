@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import SpkBadge from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-badge'
 import SpkButton from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-buttons'
@@ -7,6 +7,7 @@ import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tab
 import Link from 'next/link'
 import React, { Fragment, useEffect, useMemo, useState } from 'react'
 import {
+  ButtonGroup,
   Card,
   Col,
   Dropdown,
@@ -14,6 +15,7 @@ import {
   Offcanvas,
   Pagination,
   Row,
+  Modal,
 } from 'react-bootstrap'
 
 type CustomerStatus = 'Active' | 'Inactive' | 'Prospect' | 'Blacklisted'
@@ -30,6 +32,7 @@ type Customer = {
   mobile_phone?: string | null
   company?: string | null
   position?: string | null
+  category?: string | null
   status: CustomerStatus
   created_at: string
   updated_at: string
@@ -308,6 +311,56 @@ const seedCustomers: Customer[] = [
   },
 ]
 
+const SALES_LIST = [
+  'Bambang Tri',
+  'Rizky',
+  'Eka',
+  'Setia',
+  'David',
+  'Vicha',
+  'Heri',
+  'Dika',
+]
+
+const CATEGORY_LIST = [
+  'End-User',
+  'Panel Maker',
+  'System Integrator',
+  'EPC',
+  'Supplier/Trader',
+  'Consultant',
+  'Contractor',
+  'Data Center',
+]
+
+const STATUS_OPTIONS: CustomerStatus[] = [
+  'Active',
+  'Prospect',
+  'Inactive',
+  'Blacklisted',
+]
+
+const STATUS_VARIANT: Record<CustomerStatus, string> = {
+  Active: 'success',
+  Prospect: 'warning',
+  Inactive: 'secondary',
+  Blacklisted: 'danger',
+}
+
+const BLANK_FORM = {
+  name: '',
+  email: '',
+  company: '',
+  position: '',
+  phone_number: '',
+  mobile_phone: '',
+  area: '',
+  address: '',
+  sales: '',
+  category: '',
+  status: 'Active' as CustomerStatus,
+}
+
 const CustomerListPage: React.FC = () => {
   const pageSize = 7
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -316,6 +369,10 @@ const CustomerListPage: React.FC = () => {
   const [areaFilter, setAreaFilter] = useState<string>('All')
   const [selected, setSelected] = useState<Customer | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addForm, setAddForm] = useState({ ...BLANK_FORM })
+  const [addErrors, setAddErrors] = useState<Partial<typeof BLANK_FORM>>({})
+  const [addLoading, setAddLoading] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -433,6 +490,75 @@ const CustomerListPage: React.FC = () => {
       a[0].localeCompare(b[0]),
     )
   }, [customers])
+
+  const openAddModal = () => {
+    setAddForm({ ...BLANK_FORM })
+    setAddErrors({})
+    setShowAddModal(true)
+  }
+
+  const validateAddForm = () => {
+    const errs: Partial<typeof BLANK_FORM> = {}
+    if (!addForm.name.trim()) errs.name = 'Name is required'
+    if (!addForm.company.trim()) errs.company = 'Company is required'
+    return errs
+  }
+
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const errs = validateAddForm()
+    if (Object.keys(errs).length > 0) {
+      setAddErrors(errs)
+      return
+    }
+    setAddLoading(true)
+    try {
+      const payload = {
+        name: addForm.name.trim(),
+        email: addForm.email.trim() || null,
+        company: addForm.company.trim() || null,
+        position: addForm.position.trim() || null,
+        phone_number: addForm.phone_number.trim() || null,
+        mobile_phone: addForm.mobile_phone.trim() || null,
+        area: addForm.area.trim() || null,
+        address: addForm.address.trim() || null,
+        sales: addForm.sales || null,
+        category: addForm.category || null,
+        status: addForm.status,
+      }
+
+      const res = await fetch('/api/sales/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data?.details?.errors) {
+          const serverErrs: Partial<typeof BLANK_FORM> = {}
+          for (const [field, messages] of Object.entries(
+            data.details.errors as Record<string, string[]>,
+          )) {
+            ;(serverErrs as Record<string, string>)[field] = (messages as string[])[0]
+          }
+          setAddErrors(serverErrs)
+        } else {
+          alert(data?.error ?? 'Failed to save customer.')
+        }
+        return
+      }
+
+      setCustomers((prev) => [data as Customer, ...prev])
+      setShowAddModal(false)
+    } catch (err) {
+      console.error('handleAddCustomer error:', err)
+      alert('Network error — please try again.')
+    } finally {
+      setAddLoading(false)
+    }
+  }
 
   return (
     <Fragment>
@@ -587,7 +713,11 @@ const CustomerListPage: React.FC = () => {
                 </li>
               ))}
             </SpkDropdown>
-            <SpkButton Buttonvariant="primary" Customclass="btn btn-wave">
+            <SpkButton
+              Buttonvariant="primary"
+              Customclass="btn btn-wave"
+              onClick={openAddModal}
+            >
               <i className="ri-user-add-line me-2"></i>Add Customer
             </SpkButton>
           </div>
@@ -842,6 +972,222 @@ const CustomerListPage: React.FC = () => {
           ) : null}
         </Offcanvas.Body>
       </Offcanvas>
+
+      {/* ── Add Customer Modal ── */}
+      <Modal
+        show={showAddModal}
+        onHide={() => setShowAddModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title className="fs-16 fw-semibold">
+            <i className="ri-user-add-line me-2"></i>Add New Customer
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleAddCustomer} noValidate>
+          <Modal.Body>
+            <Row className="g-3">
+              {/* Name */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">
+                    Full Name <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    value={addForm.name}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                    placeholder="e.g. Budi Santoso"
+                    isInvalid={!!addErrors.name}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {addErrors.name}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              {/* Email */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">Email</Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    placeholder="e.g. purchasing@company.id"
+                  />
+                </Form.Group>
+              </Col>
+              {/* Company */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">
+                    Company <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    value={addForm.company}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, company: e.target.value }))
+                    }
+                    placeholder="e.g. PT Sinar Abadi"
+                    isInvalid={!!addErrors.company}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {addErrors.company}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              {/* Position */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">Position</Form.Label>
+                  <Form.Control
+                    value={addForm.position}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, position: e.target.value }))
+                    }
+                    placeholder="e.g. Purchasing Manager"
+                  />
+                </Form.Group>
+              </Col>
+              {/* Phone */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">Phone</Form.Label>
+                  <Form.Control
+                    value={addForm.phone_number}
+                    onChange={(e) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        phone_number: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. 021-555-0123"
+                  />
+                </Form.Group>
+              </Col>
+              {/* Mobile */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">Mobile</Form.Label>
+                  <Form.Control
+                    value={addForm.mobile_phone}
+                    onChange={(e) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        mobile_phone: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. +62 812-3456-7890"
+                  />
+                </Form.Group>
+              </Col>
+              {/* Area */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">Area</Form.Label>
+                  <Form.Control
+                    value={addForm.area}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, area: e.target.value }))
+                    }
+                    placeholder="e.g. Jakarta"
+                  />
+                </Form.Group>
+              </Col>
+              {/* Sales Owner — fixed dropdown */}
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">
+                    Sales Owner
+                  </Form.Label>
+                  <Form.Select
+                    value={addForm.sales}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, sales: e.target.value }))
+                    }
+                  >
+                    <option value="">— Select Sales —</option>
+                    {SALES_LIST.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              {/* Address */}
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">Address</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    value={addForm.address}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, address: e.target.value }))
+                    }
+                    placeholder="e.g. Jl. Gatot Subroto No. 88, Jakarta Selatan"
+                  />
+                </Form.Group>
+              </Col>
+              {/* Category Customer — last field */}
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="fw-medium fs-14">
+                    Category Customer
+                  </Form.Label>
+                  <Form.Select
+                    value={addForm.category}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, category: e.target.value }))
+                    }
+                  >
+                    <option value="">-- Select a Category --</option>
+                    {CATEGORY_LIST.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer>
+            <SpkButton
+              Buttonvariant="outline-light"
+              Customclass="btn btn-wave"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </SpkButton>
+            <SpkButton
+              Buttonvariant="primary"
+              Customclass="btn btn-wave"
+              type="submit"
+              disabled={addLoading}
+            >
+              {addLoading ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <i className="ri-save-line me-2"></i>Save Customer
+                </>
+              )}
+            </SpkButton>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </Fragment>
   )
 }

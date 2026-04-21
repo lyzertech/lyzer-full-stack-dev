@@ -33,9 +33,9 @@ return new class extends Migration {
             $table->string('status', 100)->nullable();
             $table->string('prospek', 100)->nullable();
 
-            $table->boolean('ack_manager')->default(false);
-            $table->boolean('ack_director')->default(false);
-            $table->boolean('ack_presdir')->default(false);
+            $table->text('ack_manager')->nullable();
+            $table->text('ack_director')->nullable();
+            $table->text('ack_presdir')->nullable();
 
             $table->text('response')->nullable();
             $table->string('image', 255)->nullable();

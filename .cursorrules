@@ -1,0 +1,30 @@
+# Lyzer Full-Stack Developer Guidelines
+
+## 🛑 CRITICAL BACKEND ARCHITECTURE RULES
+
+This project uses a strict **Modular Architecture** (HMVC). 
+You must **NEVER** use the standard, monolithic Laravel directory structures for new features.
+
+### ❌ WHAT NOT TO DO:
+- **NO STANDARD CONTROLLERS:** Do NOT create any controllers in `backend/app/Http/Controllers/`.
+- **NO STANDARD MODELS:** Do NOT create models in `backend/app/Models/` (The ONLY exception is `User.php` which must stay there for core Laravel compatibility).
+- **NO GLOBAL ROUTES:** Avoid adding massive numbers of routes to `backend/routes/api.php` or `backend/routes/auth.php`.
+- **BEWARE ARTISAN MAKE:** If you use standard `php artisan make:controller` or `php artisan make:model`, it will put files in the wrong place. If used, you MUST immediately move the files to `app/Modules/...` and update their namespaces!
+
+### ✅ WHAT TO DO INSTEAD:
+Everything must be organized by domain/feature inside the `backend/app/Modules/` directory.
+
+When adding a new feature for a specific module (e.g., `Finance`, `Sales`, `School`, `Labs`, `Auth`):
+
+1. **Controllers**: Place them in `app/Modules/<ModuleName>/Controllers/`
+   - Example Namespace: `namespace App\Modules\Sales\Controllers;`
+   - Must extend: `use App\Http\Controllers\Controller;`
+
+2. **Models**: Place them in `app/Modules/<ModuleName>/Models/`
+   - Example Namespace: `namespace App\Modules\Sales\Models;`
+
+3. **Routes**: Define feature routes in `app/Modules/<ModuleName>/routes.php`.
+
+4. **Requests/Services**: Same pattern. Keep everything contained within the Module folder.
+
+By following these rules, the project stays decoupled, scalable, and easy to navigate!

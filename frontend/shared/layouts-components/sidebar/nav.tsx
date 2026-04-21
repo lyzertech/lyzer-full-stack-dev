@@ -31,6 +31,11 @@ const badgeSuccess = (
     8
   </SpkBadge>
 )
+const badgeBeta = (
+  <SpkBadge variant="danger" Customclass="text-white ms-2">
+    BETA
+  </SpkBadge>
+)
 
 export const MENUITEMS_School: any = [
   {
@@ -239,6 +244,83 @@ export const MENUITEMS_Finance: any = [
         selected: false,
         dirchange: false,
         title: 'Transactions',
+      },
+    ],
+  },
+]
+
+export const MENUITEMS_Sales: any = [
+  {
+    menutitle: 'SALES',
+  },
+
+  {
+    title: 'Sales',
+    icon: Svgicons.Advancedicon,
+    type: 'sub',
+    dirchange: false,
+    children: [
+      {
+        title: 'CRM',
+        icon: Svgicons.Crmicon,
+        type: 'sub',
+        menusub: true,
+        active: false,
+        selected: false,
+        dirchange: false,
+        children: [
+          {
+            path: '/sales/crm/dashboard',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Dashboard',
+          },
+          {
+            path: '/sales/crm/visit-report-aii',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Visit Report AII',
+          },
+          {
+            path: '/sales/crm/visit-report-sep',
+            type: 'link',
+            active: false,
+            selected: false,
+            dirchange: false,
+            title: 'Visit Report SEP',
+          },
+        ],
+      },
+      {
+        path: '/sales/customer/list',
+        icon: Svgicons.Teamicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Customer List',
+      },
+      {
+        path: '/sales/products',
+        icon: Svgicons.Stockicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Products',
+      },
+      {
+        path: '/sales/quotation',
+        icon: Svgicons.Invoiceicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Quotation',
       },
     ],
   },
@@ -637,13 +719,123 @@ export const MENUITEMS: any = [
   },
 
   {
-    path: '/monitoring',
-    icon: Svgicons.Chartsicon,
     title: 'Monitoring',
-    type: 'link',
-    active: false,
+    icon: Svgicons.Chartsicon,
+    type: 'sub',
     dirchange: false,
-    selected: false,
+    children: [
+      {
+        path: '/monitoring',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Monitoring',
+      },
+      {
+        path: '/monitoring/dashboards',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Dashboards',
+      },
+      {
+        path: '/monitoring/installation',
+        icon: Svgicons.Advancedicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Installation',
+      },
+      {
+        path: '/monitoring/billing',
+        icon: Svgicons.Pricingicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Billing',
+      },
+      {
+        path: '/monitoring/utility-bills',
+        icon: Svgicons.Invoiceicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Utility Bills',
+        badgetxt: badgeBeta,
+      },
+      {
+        path: '/monitoring/analysis',
+        icon: Svgicons.Analyticsicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Analysis',
+      },
+      {
+        path: '/monitoring/power-quality',
+        icon: Svgicons.Apexicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Power Quality',
+        badgetxt: badgeBeta,
+      },
+      {
+        path: '/monitoring/carbon-model',
+        icon: Svgicons.Cryptoicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Carbon Model',
+        badgetxt: badgeBeta,
+      },
+      {
+        path: '/monitoring/report',
+        icon: Svgicons.Formsicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Report',
+      },
+      {
+        path: '/monitoring/data',
+        icon: Svgicons.Formsicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Data',
+      },
+      {
+        path: '/monitoring/logs',
+        icon: Svgicons.Courseicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Logs',
+      },
+      {
+        path: '/monitoring/admin',
+        icon: Svgicons.Profileicon,
+        type: 'link',
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Admin',
+      },
+    ],
   },
 
   {

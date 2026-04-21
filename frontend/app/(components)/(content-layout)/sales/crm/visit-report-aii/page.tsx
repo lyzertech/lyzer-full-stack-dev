@@ -140,27 +140,15 @@ const EMPTY_FORM: VisitReportForm = {
 
 const SALES_OPTIONS = ['David', 'Vicha', 'Heri Go', 'Dika'] as const
 
-const COMPANY_OPTIONS = [
-  'Schneider Electric Indonesia, PT',
-  'Yokogawa Indonesia, PT',
-  'Enindo Orbitama, PT',
-  'Intimuara Electrindo, PT',
-  'Enercon Indonesia, PT',
-  'ABB Sakti Industri, PT',
-  'Siemens Indonesia, PT',
-  'Honeywell Indonesia, PT',
-] as const
+// ─── Customer shape (read from /api/sales/customers) ─────────────────────────
 
-const CONTACT_OPTIONS = [
-  'Alam Wiguna',
-  'Joko Susanto',
-  'Ardian Asril',
-  'Rifan',
-  'Oki',
-  'Ari Wibowo',
-  'Budi Hartono',
-  'Sari Wulandari',
-] as const
+interface CustomerRecord {
+  id: number
+  customer_code: string
+  name: string
+  company?: string | null
+  position?: string | null
+}
 
 // 08:00 – 17:00 in 30-minute steps
 const VISIT_TIME_OPTIONS: string[] = Array.from({ length: 19 }, (_, i) => {
@@ -175,6 +163,7 @@ const VISIT_TIME_OPTIONS: string[] = Array.from({ length: 19 }, (_, i) => {
 const VisitReportAiiPage: React.FC = () => {
   const pageSizeOptions = [7, 10, 25, 50]
   const [visitRows, setVisitRows] = useState<VisitReportAiiRow[]>([])
+  const [customers, setCustomers] = useState<CustomerRecord[]>([])
   const [pageSize, setPageSize] = useState(7)
   const [query, setQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -209,6 +198,35 @@ const VisitReportAiiPage: React.FC = () => {
     [],
   )
 
+  // ── Derived lists from customer DB ──────────────────────────────────────────
+
+  /** Unique company names from the customer list, sorted A–Z */
+  const companyOptions = useMemo(() => {
+    const uniq = new Set(
+      customers.map((c) => c.company).filter(Boolean) as string[],
+    )
+    return Array.from(uniq).sort((a, b) => a.localeCompare(b))
+  }, [customers])
+
+  /**
+   * Contacts filtered by the currently selected company.
+   * If no company is chosen yet, show all contacts.
+   * Each entry is the customer's name (+ position if available).
+   */
+  const contactOptions = useMemo(() => {
+    const source = form.customer_name
+      ? customers.filter((c) => c.company === form.customer_name)
+      : customers
+    const uniq = new Map<string, string>()
+    for (const c of source) {
+      const label = c.position ? `${c.name} (${c.position})` : c.name
+      uniq.set(c.name, label)
+    }
+    return Array.from(uniq.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    )
+  }, [customers, form.customer_name])
+
   const yearOptions = ['All', '2024', '2025', '2026']
   const monthOptions = [
     'All',
@@ -229,22 +247,36 @@ const VisitReportAiiPage: React.FC = () => {
   useEffect(() => {
     let isMounted = true
 
-    const loadVisitReports = async () => {
+    const loadData = async () => {
       try {
-        const res = await fetch('/api/sales/visit-reports', {
-          cache: 'no-store',
-        })
-        if (!res.ok) return
-        const data = await res.json()
-        if (isMounted && Array.isArray(data)) {
-          setVisitRows(data as VisitReportAiiRow[])
+        const [vrRes, custRes] = await Promise.all([
+          fetch('/api/sales/visit-reports', { cache: 'no-store' }),
+          fetch('/api/sales/customers', { cache: 'no-store' }),
+        ])
+
+        if (vrRes.ok) {
+          const data = await vrRes.json()
+          if (isMounted && Array.isArray(data)) {
+            setVisitRows(data as VisitReportAiiRow[])
+          }
+        } else {
+          console.error('Failed to load visit reports:', vrRes.status)
+        }
+
+        if (custRes.ok) {
+          const data = await custRes.json()
+          if (isMounted && Array.isArray(data)) {
+            setCustomers(data as CustomerRecord[])
+          }
+        } else {
+          console.error('Failed to load customers:', custRes.status)
         }
       } catch (error) {
-        console.error('Failed to load visit reports:', error)
+        console.error('Failed to load data:', error)
       }
     }
 
-    loadVisitReports()
+    loadData()
     return () => {
       isMounted = false
     }
@@ -850,7 +882,7 @@ const VisitReportAiiPage: React.FC = () => {
                   </td>
                   <td>
                     <Link
-                      href="#!"
+                      href={`/sales/crm/visit-report-aii/${row.idVisitReport}`}
                       scroll={false}
                       className="btn btn-icon btn-sm btn-light border"
                       aria-label="Edit visit report"
@@ -956,11 +988,15 @@ const VisitReportAiiPage: React.FC = () => {
                   ref={firstInputRef as React.Ref<HTMLSelectElement>}
                   size="sm"
                   value={form.customer_name}
-                  onChange={(e) => setField('customer_name', e.target.value)}
+                  onChange={(e) => {
+                    setField('customer_name', e.target.value)
+                    // Reset contact when company changes
+                    setField('contact_person', '')
+                  }}
                   isInvalid={!!formErrors.customer_name}
                 >
                   <option value="">— select company —</option>
-                  {COMPANY_OPTIONS.map((c) => (
+                  {companyOptions.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
@@ -1018,11 +1054,16 @@ const VisitReportAiiPage: React.FC = () => {
                   size="sm"
                   value={form.contact_person}
                   onChange={(e) => setField('contact_person', e.target.value)}
+                  disabled={contactOptions.length === 0}
                 >
-                  <option value="">— select contact —</option>
-                  {CONTACT_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  <option value="">
+                    {contactOptions.length === 0
+                      ? '— no contacts found —'
+                      : '— select contact —'}
+                  </option>
+                  {contactOptions.map(([name, label]) => (
+                    <option key={name} value={name}>
+                      {label}
                     </option>
                   ))}
                 </Form.Select>

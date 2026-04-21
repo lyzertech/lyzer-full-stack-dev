@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Modules\Sales\Controllers;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,15 +25,68 @@ class SalesDataController extends Controller
                 'sc.mobile_phone',
                 'sc.company',
                 'sc.position',
+                'sc.category',
                 'sc.status',
                 'sc.created_at',
                 'sc.updated_at',
-                DB::raw("COALESCE(NULLIF(su.display_name, ''), NULLIF(TRIM(CONCAT(COALESCE(su.first_name, ''), ' ', COALESCE(su.last_name, ''))), ''), su.email) as sales"),
+                // If sales_user_id is linked, use auth_users name; else fall back to sc.sales (plain text)
+                DB::raw("COALESCE(
+                    NULLIF(su.display_name, ''),
+                    NULLIF(TRIM(CONCAT(COALESCE(su.first_name,''),' ',COALESCE(su.last_name,''))),'' ),
+                    su.email,
+                    sc.sales
+                ) as sales"),
             ])
             ->orderByDesc('sc.created_at')
             ->get();
 
         return response()->json($rows);
+    }
+
+    public function storeCustomer(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name'         => ['required', 'string', 'max:255'],
+            'email'        => ['nullable', 'email', 'max:255'],
+            'company'      => ['required', 'string', 'max:255'],
+            'position'     => ['nullable', 'string', 'max:120'],
+            'phone_number' => ['nullable', 'string', 'max:50'],
+            'mobile_phone' => ['nullable', 'string', 'max:50'],
+            'area'         => ['nullable', 'string', 'max:120'],
+            'address'      => ['nullable', 'string'],
+            'sales'        => ['nullable', 'string', 'max:120'],
+            'category'     => ['nullable', 'string', 'max:120'],
+            'status'       => ['nullable', 'in:Active,Inactive,Prospect,Blacklisted'],
+            'notes'        => ['nullable', 'string'],
+        ]);
+
+        $now = now();
+
+        // Auto-generate CUST-XXXXXX based on max id
+        $lastId = DB::table('sales_customers')->max('id') ?? 0;
+        $customerCode = 'CUST-' . str_pad((string)($lastId + 1), 6, '0', STR_PAD_LEFT);
+
+        $id = DB::table('sales_customers')->insertGetId([
+            'customer_code' => $customerCode,
+            'name'          => $validated['name'],
+            'email'         => $validated['email'] ?? null,
+            'company'       => $validated['company'],
+            'position'      => $validated['position'] ?? null,
+            'phone_number'  => $validated['phone_number'] ?? null,
+            'mobile_phone'  => $validated['mobile_phone'] ?? null,
+            'area'          => $validated['area'] ?? null,
+            'address'       => $validated['address'] ?? null,
+            'sales'         => $validated['sales'] ?? null,
+            'category'      => $validated['category'] ?? null,
+            'status'        => $validated['status'] ?? 'Active',
+            'notes'         => $validated['notes'] ?? null,
+            'created_at'    => $now,
+            'updated_at'    => $now,
+        ]);
+
+        $customer = DB::table('sales_customers')->where('id', $id)->first();
+
+        return response()->json($customer, 201);
     }
 
     public function visitReports(): JsonResponse
@@ -61,6 +115,13 @@ class SalesDataController extends Controller
                 'followUpDate' => $row->follow_up_date ? (string) $row->follow_up_date : null,
                 'status' => $status,
                 'prospek' => $prospek,
+                'notes' => (string) ($row->notes ?? ''),
+                'customer_feedback' => (string) ($row->customer_feedback ?? ''),
+                'next_steps' => (string) ($row->next_steps ?? ''),
+                'response' => (string) ($row->response ?? ''),
+                'ack_manager' => (string) ($row->ack_manager ?? ''),
+                'ack_director' => (string) ($row->ack_director ?? ''),
+                'ack_presdir' => (string) ($row->ack_presdir ?? ''),
             ];
         })->values();
 
@@ -163,9 +224,9 @@ class SalesDataController extends Controller
             'follow_up_date_status' => ['nullable', 'string', 'max:100'],
             'status'              => ['nullable', 'string', 'max:100'],
             'prospek'             => ['nullable', 'string', 'max:100'],
-            'ack_manager'         => ['nullable', 'boolean'],
-            'ack_director'        => ['nullable', 'boolean'],
-            'ack_presdir'         => ['nullable', 'boolean'],
+            'ack_manager'         => ['nullable', 'string'],
+            'ack_director'        => ['nullable', 'string'],
+            'ack_presdir'         => ['nullable', 'string'],
             'response'            => ['nullable', 'string'],
             'image'               => ['nullable', 'string', 'max:255'],
         ]);
@@ -206,9 +267,9 @@ class SalesDataController extends Controller
             'follow_up_date_status' => $validated['follow_up_date_status'] ?? null,
             'status'                => $this->normalizeVisitStatus($validated['status'] ?? 'Planned'),
             'prospek'               => $this->normalizeProspek($validated['prospek'] ?? 'Unknown'),
-            'ack_manager'           => (bool) ($validated['ack_manager'] ?? false),
-            'ack_director'          => (bool) ($validated['ack_director'] ?? false),
-            'ack_presdir'           => (bool) ($validated['ack_presdir'] ?? false),
+            'ack_manager'           => $validated['ack_manager'] ?? null,
+            'ack_director'          => $validated['ack_director'] ?? null,
+            'ack_presdir'           => $validated['ack_presdir'] ?? null,
             'response'              => $validated['response'] ?? null,
             'image'                 => $validated['image'] ?? null,
             'created_at'            => $now,
@@ -236,6 +297,42 @@ class SalesDataController extends Controller
                 'prospek'       => (string) $row->prospek,
             ],
         ], 201);
+    }
+
+    public function updateVisitReport($idTarget, Request $request): JsonResponse
+    {
+        // Accept incoming payload safely
+        $validated = $request->validate([
+            'notes'               => ['nullable', 'string'],
+            'customer_feedback'   => ['nullable', 'string'],
+            'next_steps'          => ['nullable', 'string'],
+            'follow_up_date'      => ['nullable', 'date'],
+            'prospek'             => ['nullable', 'string', 'max:100'],
+            'response'            => ['nullable', 'string'],
+            'status'              => ['nullable', 'string', 'max:100'],
+            'ack_manager'         => ['nullable', 'string'],
+            'ack_director'        => ['nullable', 'string'],
+        ]);
+
+        $updateData = [];
+        if (array_key_exists('notes', $validated)) $updateData['notes'] = $validated['notes'];
+        if (array_key_exists('customer_feedback', $validated)) $updateData['customer_feedback'] = $validated['customer_feedback'];
+        if (array_key_exists('next_steps', $validated)) $updateData['next_steps'] = $validated['next_steps'];
+        if (array_key_exists('follow_up_date', $validated)) $updateData['follow_up_date'] = $validated['follow_up_date'];
+        if (array_key_exists('prospek', $validated)) $updateData['prospek'] = $this->normalizeProspek($validated['prospek'] ?? 'Unknown');
+        if (array_key_exists('response', $validated)) $updateData['response'] = $validated['response'];
+        if (array_key_exists('status', $validated)) $updateData['status'] = $this->normalizeVisitStatus($validated['status']);
+        if (array_key_exists('ack_manager', $validated)) $updateData['ack_manager'] = $validated['ack_manager'];
+        if (array_key_exists('ack_director', $validated)) $updateData['ack_director'] = $validated['ack_director'];
+
+        if (!empty($updateData)) {
+            $updateData['updated_at'] = now();
+            DB::table('sales_visit_reports')
+                ->where('id_visit_report', $idTarget)
+                ->update($updateData);
+        }
+
+        return response()->json(['message' => 'Visit report updated successfully'], 200);
     }
 
     private function normalizeVisitStatus(string $status): string

@@ -1,10 +1,26 @@
 'use client'
 
-import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import Link from 'next/link'
 import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
-import { Alert, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Form,
+  Modal,
+  Row,
+  Spinner,
+  Table,
+} from 'react-bootstrap'
 
 /** Mirrors auth_roles + aggregate counts from the API (see backend migration auth_roles). */
 type UsersByRoleRow = {
@@ -118,7 +134,8 @@ const UserDashboard: React.FC = () => {
   const [recentError, setRecentError] = useState<string | null>(null)
 
   const [showAddUserModal, setShowAddUserModal] = useState(false)
-  const [addUserForm, setAddUserForm] = useState<AddUserFormState>(defaultAddUserForm)
+  const [addUserForm, setAddUserForm] =
+    useState<AddUserFormState>(defaultAddUserForm)
   const [addUserSubmitting, setAddUserSubmitting] = useState(false)
   const [addUserError, setAddUserError] = useState<string | null>(null)
 
@@ -197,7 +214,9 @@ const UserDashboard: React.FC = () => {
   }
 
   const handleAddUserField = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     const { name, value } = e.target
     setAddUserForm((prev) => ({ ...prev, [name]: value }))
@@ -227,7 +246,12 @@ const UserDashboard: React.FC = () => {
       const body = await res.json().catch(() => null)
 
       if (!res.ok) {
-        if (body && typeof body === 'object' && body !== null && 'errors' in body) {
+        if (
+          body &&
+          typeof body === 'object' &&
+          body !== null &&
+          'errors' in body
+        ) {
           const errs = (body as { errors?: Record<string, string[]> }).errors
           const flat =
             errs && typeof errs === 'object'
@@ -236,7 +260,11 @@ const UserDashboard: React.FC = () => {
                   .filter((m) => typeof m === 'string')
                   .join(' ')
               : ''
-          setAddUserError(flat || (body as { message?: string }).message || `Request failed (${res.status})`)
+          setAddUserError(
+            flat ||
+              (body as { message?: string }).message ||
+              `Request failed (${res.status})`,
+          )
         } else {
           setAddUserError(
             typeof (body as { error?: string })?.error === 'string'
@@ -368,7 +396,9 @@ const UserDashboard: React.FC = () => {
                   >
                     {AUTH_USER_STATUS_OPTIONS.map((s) => (
                       <option key={s} value={s}>
-                        {s === 'PendingVerification' ? 'Pending verification' : s}
+                        {s === 'PendingVerification'
+                          ? 'Pending verification'
+                          : s}
                       </option>
                     ))}
                   </Form.Select>
@@ -395,10 +425,19 @@ const UserDashboard: React.FC = () => {
             </Row>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="light" type="button" onClick={closeAddUserModal} disabled={addUserSubmitting}>
+            <Button
+              variant="light"
+              type="button"
+              onClick={closeAddUserModal}
+              disabled={addUserSubmitting}
+            >
               Cancel
             </Button>
-            <Button variant="primary" type="submit" disabled={addUserSubmitting}>
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={addUserSubmitting}
+            >
               {addUserSubmitting ? (
                 <>
                   <Spinner animation="border" size="sm" className="me-2" />
@@ -420,7 +459,11 @@ const UserDashboard: React.FC = () => {
                 <div>
                   <p className="text-muted mb-1">Total Users</p>
                   <h3 className="mb-0">
-                    {loadingRoles ? <Spinner animation="border" size="sm" /> : totalUsers}
+                    {loadingRoles ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      totalUsers
+                    )}
                   </h3>
                 </div>
                 <span className="avatar avatar-md bg-primary-transparent">
@@ -438,7 +481,11 @@ const UserDashboard: React.FC = () => {
                 <div>
                   <p className="text-muted mb-1">Active Users</p>
                   <h3 className="mb-0 text-success">
-                    {loadingRoles ? <Spinner animation="border" size="sm" /> : activeUsers}
+                    {loadingRoles ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      activeUsers
+                    )}
                   </h3>
                 </div>
                 <span className="avatar avatar-md bg-success-transparent">
@@ -456,7 +503,11 @@ const UserDashboard: React.FC = () => {
                 <div>
                   <p className="text-muted mb-1">Pending Invites</p>
                   <h3 className="mb-0 text-warning">
-                    {loadingRoles ? <Spinner animation="border" size="sm" /> : pendingUsers}
+                    {loadingRoles ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      pendingUsers
+                    )}
                   </h3>
                 </div>
                 <span className="avatar avatar-md bg-warning-transparent">
@@ -501,13 +552,20 @@ const UserDashboard: React.FC = () => {
                       {loadingRoles ? (
                         <tr>
                           <td colSpan={6} className="text-center py-4">
-                            <Spinner animation="border" size="sm" className="me-2" />
+                            <Spinner
+                              animation="border"
+                              size="sm"
+                              className="me-2"
+                            />
                             Loading roles…
                           </td>
                         </tr>
                       ) : usersByRole.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="text-muted text-center py-4">
+                          <td
+                            colSpan={6}
+                            className="text-muted text-center py-4"
+                          >
                             No active roles found.
                           </td>
                         </tr>
@@ -527,14 +585,20 @@ const UserDashboard: React.FC = () => {
                             </td>
                             <td className="text-center">
                               {item.is_system ? (
-                                <span className="badge bg-secondary-transparent">System</span>
+                                <span className="badge bg-secondary-transparent">
+                                  System
+                                </span>
                               ) : (
                                 <span className="text-muted fs-12">—</span>
                               )}
                             </td>
                             <td className="text-end">{item.total}</td>
-                            <td className="text-end text-success">{item.active}</td>
-                            <td className="text-end text-warning">{item.pending}</td>
+                            <td className="text-end text-success">
+                              {item.active}
+                            </td>
+                            <td className="text-end text-warning">
+                              {item.pending}
+                            </td>
                           </tr>
                         ))
                       )}
@@ -580,13 +644,20 @@ const UserDashboard: React.FC = () => {
                       {loadingRecent ? (
                         <tr>
                           <td colSpan={3} className="text-center py-4">
-                            <Spinner animation="border" size="sm" className="me-2" />
+                            <Spinner
+                              animation="border"
+                              size="sm"
+                              className="me-2"
+                            />
                             Loading users…
                           </td>
                         </tr>
                       ) : recentUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={3} className="text-muted text-center py-4">
+                          <td
+                            colSpan={3}
+                            className="text-muted text-center py-4"
+                          >
                             No users yet.
                           </td>
                         </tr>
@@ -595,12 +666,22 @@ const UserDashboard: React.FC = () => {
                           <tr key={user.id}>
                             <td>
                               <p className="mb-0 fw-medium">{user.name}</p>
-                              <span className="text-muted fs-12">{user.email}</span>
+                              <span className="text-muted fs-12">
+                                {user.email}
+                              </span>
                             </td>
-                            <td>{user.role ?? <span className="text-muted fs-12">—</span>}</td>
                             <td>
-                              <span className={`badge ${statusBadgeClass(user.status)}`}>
-                                {user.status === 'PendingVerification' ? 'Pending' : user.status}
+                              {user.role ?? (
+                                <span className="text-muted fs-12">—</span>
+                              )}
+                            </td>
+                            <td>
+                              <span
+                                className={`badge ${statusBadgeClass(user.status)}`}
+                              >
+                                {user.status === 'PendingVerification'
+                                  ? 'Pending'
+                                  : user.status}
                               </span>
                             </td>
                           </tr>

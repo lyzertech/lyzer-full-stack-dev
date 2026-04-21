@@ -30,6 +30,12 @@ return new class extends Migration {
             $table->string('phone_number', 50)->nullable();
             $table->string('mobile_phone', 50)->nullable();
 
+            // Salesperson name (plain text — flexible for now)
+            $table->string('sales', 120)->nullable();
+
+            // Customer category (e.g. End-User, Panel Maker …)
+            $table->string('category', 120)->nullable();
+
             $table->enum('status', ['Active', 'Inactive', 'Prospect', 'Blacklisted'])->default('Active');
             $table->text('notes')->nullable();
             $table->json('metadata')->nullable();

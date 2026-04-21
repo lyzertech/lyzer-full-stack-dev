@@ -1,7 +1,7 @@
 'use client'
 
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { MENUITEMS, MENUITEMS_Finance, MENUITEMS_SCHOOL } from './nav'
+import { MENUITEMS, MENUITEMS_Finance, MENUITEMS_SCHOOL, MENUITEMS_Sales } from './nav'
 import { catchError, map, of } from 'rxjs'
 import Link from 'next/link'
 import Menuloop from './menuloop'
@@ -37,14 +37,23 @@ const Sidebar = () => {
     normalizedRole === 'finance' ||
     normalizedRole.includes('finance') ||
     hasFinancePermission
+  const hasSalesPermission = hasPermissionPrefix(permissions, 'sales')
+  const isSalesRole =
+    normalizedRole === 'sales amptron' ||
+    normalizedRole === 'sales suryamas' ||
+    normalizedRole === 'sales-amptron' ||
+    normalizedRole === 'sales-suryamas' ||
+    hasSalesPermission
   const availableMenuItems = useMemo(
     () =>
       isSchoolRole
         ? MENUITEMS_SCHOOL
         : isFinanceRole
           ? MENUITEMS_Finance
-          : MENUITEMS,
-    [isSchoolRole, isFinanceRole],
+          : isSalesRole
+            ? MENUITEMS_Sales
+            : MENUITEMS,
+    [isSchoolRole, isFinanceRole, isSalesRole],
   )
   let [variable, setVariable] = useState(getState())
   const local_varaiable = variable

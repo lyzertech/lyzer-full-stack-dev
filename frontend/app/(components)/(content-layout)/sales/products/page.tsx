@@ -72,6 +72,26 @@ const brandOptions = [
   'Leipole',
 ]
 
+/** Maps a brand name to its SKU prefix */
+const BRAND_PREFIX: Record<string, string> = {
+  Accuenergy: 'Accu',
+  Rishabh: 'Rish',
+  'Camille Bauer': 'CB',
+  Alan: 'Alan',
+  Monarch: 'Mon',
+  EMH: 'Emh',
+  Leipole: 'Lei',
+}
+
+/** Generates the next SKU for a brand based on existing product list */
+function generateSku(brand: string, existingProducts: Product[]): string {
+  const prefix = BRAND_PREFIX[brand]
+  if (!prefix) return ''
+  const count = existingProducts.filter((p) => p.brand === brand).length
+  const seq = String(count + 1).padStart(3, '0')
+  return `${prefix}${seq}`
+}
+
 const currency = new Intl.NumberFormat('id-ID', {
   style: 'currency',
   currency: 'IDR',
@@ -552,15 +572,7 @@ const ProductsPage: React.FC = () => {
         <Offcanvas.Body>
           <Form onSubmit={submitAddProduct} className="d-flex flex-column gap-3">
             <Row className="g-2">
-              <Col md={6}>
-                <Form.Label>SKU *</Form.Label>
-                <Form.Control
-                  required
-                  value={form.sku}
-                  onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))}
-                />
-              </Col>
-              <Col md={6}>
+              <Col md={12}>
                 <Form.Label>Code *</Form.Label>
                 <Form.Control
                   required
@@ -580,7 +592,11 @@ const ProductsPage: React.FC = () => {
                 <Form.Label>Brand</Form.Label>
                 <Form.Select
                   value={form.brand}
-                  onChange={(e) => setForm((p) => ({ ...p, brand: e.target.value }))}
+                  onChange={(e) => {
+                    const brand = e.target.value
+                    const autoSku = generateSku(brand, products)
+                    setForm((p) => ({ ...p, brand, sku: autoSku }))
+                  }}
                 >
                   <option value="">Select Brand</option>
                   {brandOptions.map((brand) => (

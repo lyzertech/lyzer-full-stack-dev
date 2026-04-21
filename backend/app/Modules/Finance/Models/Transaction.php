@@ -12,16 +12,36 @@ class Transaction extends Model
     protected $table = 'finance_transactions';
 
     protected $fillable = [
-        'title',
-        'type',         // income | expense
+        'transaction_type',
+        'account_id',
+        'transfer_to_account_id',
+        'category_id',
         'amount',
+        'balance_after',
         'description',
-        'date',
-        'created_by',
+        'reference_number',
+        'transaction_date',
+        'notes',
     ];
 
     protected $casts = [
-        'amount' => 'float',
-        'date'   => 'date',
+        'amount'           => 'float',
+        'balance_after'    => 'float',
+        'transaction_date' => 'date',
     ];
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
+
+    public function transferToAccount()
+    {
+        return $this->belongsTo(Account::class, 'transfer_to_account_id');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
 }

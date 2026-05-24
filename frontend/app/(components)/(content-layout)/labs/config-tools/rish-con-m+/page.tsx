@@ -52,7 +52,7 @@ export default function RishConMPlusPage() {
   }
 
   const fetchModbusData = async (address: number, count: number): Promise<ModbusData> => {
-    const response = await fetch(`/api/modbus/read/${address}/${count}`)
+    const response = await fetch(`/api/v1/modbus/read/${address}/${count}`)
     if (!response.ok) {
       throw new Error('Failed to fetch data')
     }
@@ -82,7 +82,7 @@ export default function RishConMPlusPage() {
     try {
       for (const change of changes) {
         try {
-          const response = await fetch('/api/modbus/write', {
+          const response = await fetch('/api/v1/modbus/write', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address: change.address, value: parseFloat(change.value) })

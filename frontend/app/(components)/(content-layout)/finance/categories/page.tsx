@@ -9,13 +9,16 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  type Category,
 } from '@/app/actions/finance/categories.actions'
-import type { Category } from '@/lib/finance/repositories/categories.repository'
+import { useAuth } from '@/shared/auth/AuthContext'
 
 const CategoriesPage: React.FC = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -31,8 +34,9 @@ const CategoriesPage: React.FC = () => {
   })
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return
     loadCategories()
-  }, [filterType])
+  }, [filterType, authLoading, isAuthenticated])
 
   async function loadCategories() {
     setLoading(true)
@@ -80,7 +84,7 @@ const CategoriesPage: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingCategory(null)
-    setError(null)
+    setFormError(null)
   }
 
   const handleChange = (e: any) => {
@@ -99,7 +103,7 @@ const CategoriesPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    setError(null)
+    setFormError(null)
     try {
       if (editingCategory) {
         await updateCategory({
@@ -117,7 +121,7 @@ const CategoriesPage: React.FC = () => {
       loadCategories()
     } catch (err: any) {
       console.error(err)
-      setError(err.message || 'Failed to save category')
+      setFormError(err.message || 'Failed to save category')
     } finally {
       setSubmitting(false)
     }
@@ -136,6 +140,52 @@ const CategoriesPage: React.FC = () => {
   const parentCategories = categories.filter(
     (c) => c.type === form.type && (!c.parent_id || c.parent_id === 0)
   )
+
+  if (loading) {
+    return (
+      <Fragment>
+        <Seo title="Categories" />
+        <Pageheader
+          title="Finance"
+          subtitle="Categories"
+          currentpage="Categories"
+          activepage="Manage Categories"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="text-center">Loading...</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
+  }
+
+  if (error) {
+    return (
+      <Fragment>
+        <Seo title="Categories" />
+        <Pageheader
+          title="Finance"
+          subtitle="Categories"
+          currentpage="Categories"
+          activepage="Manage Categories"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="alert alert-danger">{error}</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
+  }
 
   return (
     <Fragment>
@@ -193,12 +243,7 @@ const CategoriesPage: React.FC = () => {
               <div className="card-title">Categories</div>
             </Card.Header>
             <Card.Body>
-              {error && <div className="alert alert-danger mb-3">{error}</div>}
-
-              {loading ? (
-                <div className="text-center">Loading...</div>
-              ) : (
-                <div className="table-responsive">
+              <div className="table-responsive">
                   <Table className="table-hover">
                     <thead>
                       <tr>
@@ -290,8 +335,7 @@ const CategoriesPage: React.FC = () => {
                       )}
                     </tbody>
                   </Table>
-                </div>
-              )}
+              </div>
             </Card.Body>
           </Card>
         </Col>
@@ -305,7 +349,7 @@ const CategoriesPage: React.FC = () => {
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            {error && <div className="alert alert-danger">{error}</div>}
+            {formError && <div className="alert alert-danger">{formError}</div>}
 
             <Row>
               <Col md={6}>

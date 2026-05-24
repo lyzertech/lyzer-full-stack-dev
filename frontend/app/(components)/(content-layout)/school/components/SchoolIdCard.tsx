@@ -24,7 +24,7 @@ export default function SchoolIdCard() {
   useEffect(() => {
     let mounted = true
     setLoading(true)
-    fetch('/api/school/settings', { cache: 'no-store' })
+    fetch('/api/v1/school/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!mounted) return

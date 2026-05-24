@@ -41,7 +41,7 @@ export default function SchoolSettingsGeneralPage() {
   async function loadSettings() {
     setLoading(true)
     try {
-      const r = await fetch('/api/school/settings')
+      const r = await fetch('/api/v1/school/settings')
       if (!r.ok) throw new Error('Failed to load')
       const data = await r.json()
       setSettings(data || {})
@@ -71,7 +71,7 @@ export default function SchoolSettingsGeneralPage() {
     setSuccess(null)
 
     try {
-      const res = await fetch('/api/school/settings', {
+      const res = await fetch('/api/v1/school/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings || {}),

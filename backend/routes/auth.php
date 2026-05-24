@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/signup', [AuthController::class, 'signup']);
 
 Route::middleware('auth.session')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -32,4 +33,8 @@ Route::middleware('auth.session')->group(function () {
     Route::put('/sales/visit-reports/{idTarget}', [SalesDataController::class, 'updateVisitReport']);
     Route::get('/sales/products', [SalesDataController::class, 'products']);
     Route::post('/sales/products', [SalesDataController::class, 'storeProduct']);
+    
+    Route::get('/sales/quotations', [SalesDataController::class, 'quotations']);
+    Route::post('/sales/quotations', [SalesDataController::class, 'storeQuotation']);
+    Route::put('/sales/quotations/{idTarget}', [SalesDataController::class, 'updateQuotation']);
 });

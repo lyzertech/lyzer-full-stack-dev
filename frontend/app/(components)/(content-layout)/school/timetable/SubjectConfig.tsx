@@ -36,7 +36,7 @@ const SubjectConfig: React.FC<SubjectConfigProps> = ({
     const fetchGrades = async () => {
       setGradesLoading(true)
       try {
-        const res = await fetch('/api/school/grades', { cache: 'no-store' })
+        const res = await fetch('/api/v1/school/grades', { cache: 'no-store' })
         if (!res.ok) throw new Error('Failed to load grades')
         const rows = await res.json()
         // Aggregate by grade id/level/name
@@ -108,7 +108,7 @@ const SubjectConfig: React.FC<SubjectConfigProps> = ({
         is_active: !!form.is_active,
       }
 
-      const res = await fetch('/api/subjects', {
+      const res = await fetch('/api/v1/subjects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

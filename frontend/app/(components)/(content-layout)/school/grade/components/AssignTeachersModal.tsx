@@ -42,7 +42,7 @@ const AssignTeachersModal: React.FC<Props> = ({
     setAssignSubmitting(true)
     try {
       const promises = assignRooms.map((r) =>
-        fetch('/api/school/grades', {
+        fetch('/api/v1/school/grades', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

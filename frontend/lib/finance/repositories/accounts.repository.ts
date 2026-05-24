@@ -1,6 +1,5 @@
 /**
- * @deprecated All DB access has been migrated to the Laravel backend.
- * Use `@/app/actions/finance/accounts.actions` instead.
+ * @deprecated Use `@/app/actions/finance/accounts.actions` (client API via apiClient).
  *
  * Interfaces are kept here only for backwards-compatibility with any
  * existing imports. No database code remains in this file.

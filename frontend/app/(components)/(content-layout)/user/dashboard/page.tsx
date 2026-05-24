@@ -21,6 +21,7 @@ import {
   Spinner,
   Table,
 } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 /** Mirrors auth_roles + aggregate counts from the API (see backend migration auth_roles). */
 type UsersByRoleRow = {
@@ -146,38 +147,40 @@ const UserDashboard: React.FC = () => {
     setRecentError(null)
     try {
       const [rolesRes, recentRes] = await Promise.all([
-        fetch('/api/user/dashboard/users-by-role', { cache: 'no-store' }),
-        fetch('/api/user/dashboard/recent-users', { cache: 'no-store' }),
+        apiClient.get('/users/dashboard/users-by-role', { cache: 'no-store' }),
+        apiClient.get('/users/dashboard/recent-users', { cache: 'no-store' }),
       ])
 
-      if (!rolesRes.ok) {
-        const body = await rolesRes.json().catch(() => ({}))
+      if (rolesRes.status !== 200) {
+        const body = rolesRes.data || {}
         const msg =
           typeof body?.error === 'string'
             ? body.error
             : `Could not load roles (${rolesRes.status})`
         setRolesError(msg)
       } else {
-        const json = await rolesRes.json()
+        const json = rolesRes.data
         const rows = Array.isArray(json?.data) ? json.data : []
         setUsersByRole(mapUsersByRoleRows(rows))
       }
 
-      if (!recentRes.ok) {
-        const body = await recentRes.json().catch(() => ({}))
+      if (recentRes.status !== 200) {
+        const body = recentRes.data || {}
         const msg =
           typeof body?.error === 'string'
             ? body.error
             : `Could not load recent users (${recentRes.status})`
         setRecentError(msg)
       } else {
-        const json = await recentRes.json()
+        const json = recentRes.data
         const rows = Array.isArray(json?.data) ? json.data : []
         setRecentUsers(mapRecentUserRows(rows))
       }
-    } catch {
-      setRolesError('Network error while loading roles.')
-      setRecentError('Network error while loading recent users.')
+    } catch (e: any) {
+      if (e.response?.status !== 401) {
+        setRolesError('Network error while loading roles.')
+        setRecentError('Network error while loading recent users.')
+      }
     } finally {
       setLoadingRoles(false)
       setLoadingRecent(false)
@@ -237,15 +240,11 @@ const UserDashboard: React.FC = () => {
         role_id: addUserForm.role_id ? Number(addUserForm.role_id) : null,
       }
 
-      const res = await fetch('/api/user/dashboard/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const res = await apiClient.post('/users/dashboard/users', payload)
+      
+      const body = res.data
 
-      const body = await res.json().catch(() => null)
-
-      if (!res.ok) {
+      if (res.status !== 201 && res.status !== 200) {
         if (
           body &&
           typeof body === 'object' &&
@@ -278,8 +277,10 @@ const UserDashboard: React.FC = () => {
       setShowAddUserModal(false)
       setAddUserForm(defaultAddUserForm())
       await reloadDashboard()
-    } catch {
-      setAddUserError('Network error while creating user.')
+    } catch (e: any) {
+      if (e.response?.status !== 401) {
+        setAddUserError('Network error while creating user.')
+      }
     } finally {
       setAddUserSubmitting(false)
     }

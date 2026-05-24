@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\ModuleServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(prepend: [
+            \App\Http\Middleware\ResolveBearerToken::class,
+        ]);
+
         $middleware->alias([
             'role' => CheckRole::class,
             'auth.session' => \App\Http\Middleware\CustomAuthSession::class,

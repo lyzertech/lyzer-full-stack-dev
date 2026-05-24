@@ -1,7 +1,7 @@
 'use client'
 
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { MENUITEMS, MENUITEMS_Finance, MENUITEMS_SCHOOL, MENUITEMS_Sales } from './nav'
+import { MENUITEMS, MENUITEMS_Finance, MENUITEMS_SCHOOL, MENUITEMS_Sales, MENUITEMS_Monitoring } from './nav'
 import { catchError, map, of } from 'rxjs'
 import Link from 'next/link'
 import Menuloop from './menuloop'
@@ -44,6 +44,11 @@ const Sidebar = () => {
     normalizedRole === 'sales-amptron' ||
     normalizedRole === 'sales-suryamas' ||
     hasSalesPermission
+  const hasMonitoringPermission = hasPermissionPrefix(permissions, 'monitoring')
+  const isMonitoringRole =
+    normalizedRole === 'monitoring' ||
+    normalizedRole.includes('monitoring') ||
+    hasMonitoringPermission
   const availableMenuItems = useMemo(
     () =>
       isSchoolRole
@@ -52,8 +57,10 @@ const Sidebar = () => {
           ? MENUITEMS_Finance
           : isSalesRole
             ? MENUITEMS_Sales
-            : MENUITEMS,
-    [isSchoolRole, isFinanceRole, isSalesRole],
+            : isMonitoringRole
+              ? MENUITEMS_Monitoring
+              : MENUITEMS,
+    [isSchoolRole, isFinanceRole, isSalesRole, isMonitoringRole],
   )
   let [variable, setVariable] = useState(getState())
   const local_varaiable = variable
@@ -1128,7 +1135,7 @@ const Sidebar = () => {
               {/* <!-- End::slide --> */}
               {/* <!-- Start::slide --> */}
               <li className="slide">
-                <Link
+                {/* <Link
                   href="/authentication/sign-in/cover"
                   className="side-menu__item"
                 >
@@ -1171,12 +1178,12 @@ const Sidebar = () => {
                     />
                   </svg>
                   <span className="side-menu__label">Logout</span>
-                </Link>
+                </Link> */}
               </li>
               {/* <!-- End::slide --> */}
               {/* <!-- Start::slide --> */}
               <li className="slide">
-                <Link
+                {/* <Link
                   href="/pages/profile-settings"
                   className="side-menu__item"
                 >
@@ -1294,12 +1301,12 @@ const Sidebar = () => {
                     />
                   </svg>
                   <span className="side-menu__label">Profile Settings</span>
-                </Link>
+                </Link> */}
               </li>
               {/* <!-- End::slide --> */}
               {/* <!-- Start::slide --> */}
               <li className="slide">
-                <Link
+                {/* <Link
                   href="/pages/profile"
                   className="side-menu__item p-1 rounded-circle mb-0"
                 >
@@ -1311,7 +1318,7 @@ const Sidebar = () => {
                       className=""
                     />
                   </span>
-                </Link>
+                </Link> */}
               </li>
               {/* <!-- End::slide --> */}
             </ul>

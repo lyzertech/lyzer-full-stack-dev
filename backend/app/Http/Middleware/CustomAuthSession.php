@@ -30,9 +30,8 @@ class CustomAuthSession
             return response()->json(['message' => 'Unauthenticated or session expired.'], 401);
         }
 
-        DB::table('auth_user_sessions')
-            ->where('id', $session->id)
-            ->update(['last_activity_at' => now()]);
+        // Note: avoid per-request session row updates here; some production hosts
+        // were invalidating sessions after the first authenticated API call.
 
         $user = User::find($session->user_id);
 

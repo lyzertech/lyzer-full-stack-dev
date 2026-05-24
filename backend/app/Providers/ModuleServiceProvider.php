@@ -15,6 +15,7 @@ class ModuleServiceProvider extends ServiceProvider
         'labs'    => 'labs',
         'school'  => 'school',
         'sales'   => 'sales',
+        'monitoring' => 'monitoring',
     ];
 
     public function boot(): void

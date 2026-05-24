@@ -65,8 +65,10 @@ const SignIn = () => {
           router.push('/finance/dashboard');
         } else if (user && user.role === 'school') {
           router.push('/school/dashboard');
+        } else if (user && user.role === 'monitoring') {
+          router.push('/monitoring/analysis');
         } else {
-          router.push('/dashboards/sales');
+          router.push('/monitoring/analysis');
         }
       }, 1000);
 
@@ -238,7 +240,7 @@ const SignIn = () => {
                     </div>
                   </Form>
 
-                  <div className="text-center my-3 authentication-barrier">
+                  {/* <div className="text-center my-3 authentication-barrier">
                     <span className="op-4 fs-13">OR</span>
                   </div>
 
@@ -259,7 +261,7 @@ const SignIn = () => {
 
                   <div className="text-center mt-3 fw-medium">
                     Dont have an account? <Link scroll={false} href="/authentication/sign-up" className="text-primary">Sign up</Link>
-                  </div>
+                  </div> */}
                 </Card.Body>
               </Card>
             </Col>

@@ -9,13 +9,16 @@ import {
   createBank,
   updateBank,
   deleteBank,
+  type Bank,
 } from '@/app/actions/finance/banks.actions'
-import type { Bank } from '@/lib/finance/repositories/banks.repository'
+import { useAuth } from '@/shared/auth/AuthContext'
 
 const BanksPage: React.FC = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [banks, setBanks] = useState<Bank[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingBank, setEditingBank] = useState<Bank | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -34,8 +37,9 @@ const BanksPage: React.FC = () => {
   })
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return
     loadBanks()
-  }, [])
+  }, [authLoading, isAuthenticated])
 
   async function loadBanks() {
     setLoading(true)
@@ -89,7 +93,7 @@ const BanksPage: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingBank(null)
-    setError(null)
+    setFormError(null)
   }
 
   const handleChange = (e: any) => {
@@ -103,7 +107,7 @@ const BanksPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    setError(null)
+    setFormError(null)
     try {
       if (editingBank) {
         await updateBank({ id: editingBank.id, ...form })
@@ -114,7 +118,7 @@ const BanksPage: React.FC = () => {
       loadBanks()
     } catch (err: any) {
       console.error(err)
-      setError(err.message || 'Failed to save bank')
+      setFormError(err.message || 'Failed to save bank')
     } finally {
       setSubmitting(false)
     }
@@ -128,6 +132,52 @@ const BanksPage: React.FC = () => {
     } catch (err: any) {
       alert(err.message || 'Failed to delete bank')
     }
+  }
+
+  if (loading) {
+    return (
+      <Fragment>
+        <Seo title="Banks" />
+        <Pageheader
+          title="Finance"
+          subtitle="Banks"
+          currentpage="Banks"
+          activepage="Manage Banks"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="text-center">Loading...</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
+  }
+
+  if (error) {
+    return (
+      <Fragment>
+        <Seo title="Banks" />
+        <Pageheader
+          title="Finance"
+          subtitle="Banks"
+          currentpage="Banks"
+          activepage="Manage Banks"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="alert alert-danger">{error}</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
   }
 
   return (
@@ -161,12 +211,7 @@ const BanksPage: React.FC = () => {
               <div className="card-title">Banks</div>
             </Card.Header>
             <Card.Body>
-              {error && <div className="alert alert-danger mb-3">{error}</div>}
-
-              {loading ? (
-                <div className="text-center">Loading...</div>
-              ) : (
-                <div className="table-responsive">
+              <div className="table-responsive">
                   <Table className="table-hover">
                     <thead>
                       <tr>
@@ -235,8 +280,7 @@ const BanksPage: React.FC = () => {
                       )}
                     </tbody>
                   </Table>
-                </div>
-              )}
+              </div>
             </Card.Body>
           </Card>
         </Col>
@@ -250,7 +294,7 @@ const BanksPage: React.FC = () => {
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            {error && <div className="alert alert-danger">{error}</div>}
+            {formError && <div className="alert alert-danger">{formError}</div>}
 
             <Row>
               <Col md={6}>

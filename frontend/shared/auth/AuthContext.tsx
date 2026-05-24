@@ -4,12 +4,19 @@
  * AuthContext - Global Authentication Context
  *
  * Provides authentication state and methods throughout the application.
- * Authentication is handled by Laravel (Sanctum) via Next.js proxy API routes.
+ * Authentication is handled directly via Axios apiClient connecting to the Laravel API.
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AuthContextType, AuthUser } from './types';
 import { toast } from 'react-toastify';
+import { apiClient } from '@/lib/api-client';
+import {
+  AUTH_USER_KEY,
+  clearAuthToken,
+  getAuthToken,
+  setAuthToken,
+} from '@/lib/auth-storage';
 
 // Create the context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,47 +44,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /**
    * Check authentication status on mount and when needed
    */
-  const checkAuth = useCallback(async () => {
+  const restoreUserFromCache = useCallback((): AuthUser | null => {
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem(AUTH_USER_KEY);
+    if (!raw) return null;
     try {
-      const response = await fetch('/api/auth/me', {
-        method: 'GET',
-        credentials: 'include',
-      });
+      return JSON.parse(raw) as AuthUser;
+    } catch {
+      return null;
+    }
+  }, []);
 
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response from /api/auth/me:', text);
-        setUser(null);
-        return;
-      }
+  const checkAuth = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      setInitialized(true);
+      return;
+    }
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.user) {
-          // Map Laravel user to AuthUser format
-          const authUser: AuthUser = {
-            uid: String(data.user.id),
-            email: data.user.email,
-            displayName: data.user.displayName,
-            photoURL: data.user.photoUrl ?? null,
-            emailVerified: data.user.emailVerified ?? true,
-            role: resolveRoleSlug(data.user),
-            permissions: data.user.roles?.flatMap((ur: any) =>
-              ur.role?.permissions?.map((p: any) => p.permission?.slug) || []
-            ) || [],
-          };
-          setUser(authUser);
-        } else {
-          setUser(null);
-        }
+    // Live api.lyzer.my.id currently allows only one authenticated request per
+    // login token (server config). Restore cached user so /me does not consume
+    // the token before finance pages load.
+    const cachedUser = restoreUserFromCache();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setLoading(false);
+      setInitialized(true);
+      return;
+    }
+
+    try {
+      const response = await apiClient.get('/me');
+      const data = response.data;
+      
+      // The API returns the user directly or inside user key
+      const userData = data.user || data;
+      if (userData) {
+        const authUser: AuthUser = {
+          uid: String(userData.id),
+          email: userData.email,
+          displayName: userData.name || userData.displayName,
+          photoURL: userData.photoUrl ?? null,
+          emailVerified: userData.emailVerified ?? true,
+          role: resolveRoleSlug(userData),
+          permissions: userData.roles?.flatMap((ur: any) =>
+            ur.role?.permissions?.map((p: any) => p.permission?.slug) || []
+          ) || [],
+        };
+        setUser(authUser);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(authUser));
       } else {
         setUser(null);
       }
-    } catch (error) {
-      console.error('Error checking auth:', error);
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error ? error.message : 'Error checking auth';
+      console.error('Error checking auth:', msg);
       setUser(null);
+      clearAuthToken();
     } finally {
       setLoading(false);
       setInitialized(true);
@@ -98,38 +124,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
 
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password,
-          displayName,
-        }),
+      const response = await apiClient.post('/signup', {
+        email,
+        password,
+        displayName,
       });
 
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response from signup API:', text);
-        throw new Error('Server error: Invalid response format. Please check server logs.');
+      const data = response.data;
+
+      // Upon successful signup, log the user in automatically
+      if (data.token) {
+        setAuthToken(data.token);
+        const userData = data.user;
+        const authUser: AuthUser = {
+          uid: String(userData.id),
+          email: userData.email,
+          displayName: userData.name || userData.displayName,
+          photoURL: userData.photoUrl ?? null,
+          emailVerified: userData.emailVerified ?? true,
+          role: resolveRoleSlug(userData) || 'user',
+          permissions: [],
+        };
+        setUser(authUser);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(authUser));
       }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to sign up');
-      }
-
-      // Account created successfully
-      // User is NOT automatically logged in - they must sign in manually
-      // This is intentional to ensure users verify their credentials work
     } catch (error: any) {
-      const errorMessage = error.message || 'Failed to sign up';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to sign up';
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
@@ -143,50 +163,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
 
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+      const response = await apiClient.post('/login', {
+        email,
+        password,
       });
 
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response from signin API:', text);
-        throw new Error('Server error: Invalid response format. Please check server logs.');
-      }
+      const data = response.data;
+      if (data.token && data.user) {
+        setAuthToken(data.token);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to sign in');
-      }
-
-      if (data.success && data.user) {
-        // Map Laravel user to AuthUser format
         const authUser: AuthUser = {
           uid: String(data.user.id),
           email: data.user.email,
-          displayName: data.user.displayName,
+          displayName: data.user.name || data.user.displayName,
           photoURL: data.user.photoUrl ?? null,
           emailVerified: data.user.emailVerified ?? true,
-          role: resolveRoleSlug(data.user),
+          role: resolveRoleSlug(data.user) || data.user.role,
           permissions: [],
         };
         setUser(authUser);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(authUser));
         return authUser;
       }
       
       throw new Error('Invalid response from server');
     } catch (error: any) {
-      const errorMessage = error.message || 'Failed to sign in';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to sign in';
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
@@ -194,14 +196,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   /**
-   * Login with Google (not implemented - can be added later)
+   * Login with Google (not implemented)
    */
   const loginWithGoogle = useCallback(async (): Promise<AuthUser> => {
     throw new Error('Google login is not yet implemented. Please use email/password authentication.');
   }, []);
 
   /**
-   * Login with Facebook (not implemented - can be added later)
+   * Login with Facebook (not implemented)
    */
   const loginWithFacebook = useCallback(async (): Promise<AuthUser> => {
     throw new Error('Facebook login is not yet implemented. Please use email/password authentication.');
@@ -213,37 +215,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
-
-      // Clear any leftover toasts from previous mounts (like "Login successful")
       toast.dismiss();
 
-      await fetch('/api/auth/signout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
+      await apiClient.post('/logout');
+    } catch (error: any) {
+      console.error('Logout error:', error);
+    } finally {
       setUser(null);
+      clearAuthToken();
+      setLoading(false);
 
       toast.success('Logged out successfully', {
         position: 'top-right',
         autoClose: 1500,
       });
-    } catch (error: any) {
-      console.error('Logout error:', error);
-      toast.error('Failed to log out', {
-        position: 'top-right',
-        autoClose: 1500,
-      });
-      // Still clear user state even if API call fails
-      setUser(null);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   /**
    * Refresh user data
-   * Useful for updating user info after profile changes
    */
   const refreshUser = useCallback(async (): Promise<void> => {
     await checkAuth();
@@ -270,9 +260,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 /**
  * useAuth Hook
- * 
- * Custom hook to access auth context
- * Throws error if used outside AuthProvider
  */
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);

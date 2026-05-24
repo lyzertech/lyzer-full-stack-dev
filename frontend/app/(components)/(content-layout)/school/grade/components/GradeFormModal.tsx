@@ -73,7 +73,7 @@ const GradeFormModal: React.FC<Props> = ({
         }))
       if (rooms.length) payload.rooms = rooms
 
-      const res = await fetch('/api/school/grades', {
+      const res = await fetch('/api/v1/school/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

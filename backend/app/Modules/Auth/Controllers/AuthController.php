@@ -114,4 +114,122 @@ class AuthController extends Controller
             ],
         ]);
     }
+
+    public function signup(\App\Http\Requests\SignupRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $user = DB::transaction(function () use ($validated, $request) {
+            // 1. Create primary User model
+            $user = User::create([
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'display_name' => $validated['displayName'] ?? null,
+                'email_verified' => false,
+                'status' => 'Active',
+                'is_active' => true,
+                'last_login_at' => now(),
+                'last_login_ip' => $request->ip(),
+                'last_activity_at' => now(),
+                'password_changed_at' => now(),
+            ]);
+
+            // 2. Generate and verify unique username
+            $emailPrefix = strstr($validated['email'], '@', true);
+            $baseUsername = preg_replace('/[^a-z0-9_]/', '_', strtolower($emailPrefix));
+            $username = $baseUsername;
+            
+            $attempts = 0;
+            while (DB::table('explore_users')->where('username', $username)->exists() && $attempts < 10) {
+                $username = $baseUsername . '_' . rand(1000, 9999);
+                $attempts++;
+            }
+
+            // 3. Create explore/social profile
+            DB::table('explore_users')->insert([
+                'user_id' => $user->id,
+                'username' => $username,
+                'display_name' => $validated['displayName'] ?? $emailPrefix,
+                'email' => $validated['email'],
+                'is_private' => false,
+                'is_verified' => false,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 4. Create default User Settings
+            DB::table('auth_user_settings')->insert([
+                'user_id' => $user->id,
+                'email_notifications' => true,
+                'push_notifications' => true,
+                'sms_notifications' => false,
+                'profile_visibility' => 'Public',
+                'show_email' => false,
+                'show_phone' => false,
+                'theme' => 'light',
+                'language' => 'en',
+                'timezone' => 'UTC',
+                'date_format' => 'YYYY-MM-DD',
+                'time_format' => '24h',
+                'items_per_page' => 20,
+                'auto_save' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 5. Assign default 'user' role
+            $role = DB::table('auth_roles')->where('slug', 'user')->first();
+            if ($role) {
+                DB::table('auth_user_roles')->insert([
+                    'user_id' => $user->id,
+                    'role_id' => $role->id,
+                    'is_active' => true,
+                    'assigned_at' => now(),
+                ]);
+            }
+
+            // 6. Record signup in audit logs
+            DB::table('auth_audit_logs')->insert([
+                'user_id' => $user->id,
+                'action' => 'user_signup',
+                'resource' => 'auth_users',
+                'resource_id' => (string) $user->id,
+                'description' => "New user signed up: {$user->email}",
+                'severity' => 'Info',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'created_at' => now(),
+            ]);
+
+            return $user;
+        });
+
+        // 7. Generate session token (using custom auth session mechanism)
+        $token = \Illuminate\Support\Str::random(60);
+        $refreshToken = \Illuminate\Support\Str::random(60);
+
+        DB::table('auth_user_sessions')->insert([
+            'user_id' => $user->id,
+            'session_token' => hash('sha256', $token),
+            'refresh_token' => hash('sha256', $refreshToken),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'expires_at' => now()->addDays(7),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->display_name ?? $user->email,
+                'email' => $user->email,
+                'role' => 'user',
+            ],
+            'message' => 'User created successfully',
+        ], 201);
+    }
 }

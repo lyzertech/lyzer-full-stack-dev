@@ -1,23 +1,6 @@
 <?php
 
-// Module routes are auto-registered by ModuleServiceProvider
-// using subdomain groups per module (Finance, Labs, School).
-//
-// Finance routes are ALSO registered here (without subdomain) so they
-// resolve at localhost:8000/api/v1/finance/* during local development.
-// In production the subdomain variant (finance.lyzer.test) takes precedence.
-//
-// Auth routes are loaded from routes/auth.php by ModuleServiceProvider.
-
 use Illuminate\Support\Facades\Route;
-use App\Modules\School\Controllers\TeacherController;
-
-Route::get('/ping', fn() => response()->json(['status' => 'ok', 'service' => 'lyzer-api']));
-
-// ─── School (public, no auth) ─────────────────────────────────────────────
-// Expose teachers publicly on main domain for easy frontend integration
-Route::apiResource('teachers', TeacherController::class);
-Route::apiResource('students', \App\Modules\School\Controllers\StudentController::class);
 
 // ─── Finance (authenticated) ──────────────────────────────────────────────
 // Exposes all finance endpoints at /api/v1/finance/* without subdomain,
@@ -25,3 +8,23 @@ Route::apiResource('students', \App\Modules\School\Controllers\StudentController
 Route::middleware(['api', 'auth.session'])
     ->prefix('v1/finance')
     ->group(app_path('Modules/Finance/routes.php'));
+
+// ─── Monitoring (authenticated) ───────────────────────────────────────────
+Route::middleware(['api', 'auth.session'])
+    ->prefix('v1/monitoring')
+    ->group(app_path('Modules/Monitoring/routes.php'));
+
+// ─── Labs (authenticated) ─────────────────────────────────────────────────
+Route::middleware(['api', 'auth.session'])
+    ->prefix('v1/labs')
+    ->group(app_path('Modules/Labs/routes.php'));
+
+// ─── Point+ (authenticated) ───────────────────────────────────────────────
+Route::middleware(['api', 'auth.session'])
+    ->prefix('v1/point-plus')
+    ->group(app_path('Modules/PointPlus/routes.php'));
+
+// ─── Vehicle (authenticated) ──────────────────────────────────────────────
+Route::middleware(['api', 'auth.session'])
+    ->prefix('v1/vehicle')
+    ->group(app_path('Modules/Vehicle/routes.php'));

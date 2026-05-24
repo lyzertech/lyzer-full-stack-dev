@@ -14,7 +14,7 @@ const SimpleStudentTable: React.FC<Props> = ({ students, loading }) => {
 
   React.useEffect(() => {
     let mounted = true
-    fetch('/api/school/grades', { cache: 'no-store' })
+    fetch('/api/v1/school/grades', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!mounted) return

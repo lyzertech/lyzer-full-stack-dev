@@ -39,7 +39,7 @@ const JobsTable: React.FC<{ teachers?: Teacher[] }> = ({ teachers }) => {
     const fetchTeachers = async () => {
       setLoading(true)
       try {
-        const res = await fetch('/api/teachers', {
+        const res = await fetch('/api/v1/teachers', {
           method: 'GET',
           cache: 'no-store',
         })
@@ -73,7 +73,7 @@ const JobsTable: React.FC<{ teachers?: Teacher[] }> = ({ teachers }) => {
     // fetch school settings for header
     let schoolName = 'School Name'
     try {
-      const resS = await fetch('/api/school/settings', { cache: 'no-store' })
+      const resS = await fetch('/api/v1/school/settings', { cache: 'no-store' })
       if (resS.ok) {
         const sdata = await resS.json()
         schoolName = sdata?.school_name || sdata?.short_name || schoolName

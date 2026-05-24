@@ -48,7 +48,7 @@ const GradesPage: React.FC = () => {
 
   async function fetchTeachers() {
     try {
-      const res = await fetch('/api/teachers', { cache: 'no-store' })
+      const res = await fetch('/api/v1/teachers', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load teachers')
       const data = await res.json()
       setTeachers(data)
@@ -61,7 +61,7 @@ const GradesPage: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/school/grades', { cache: 'no-store' })
+      const res = await fetch('/api/v1/school/grades', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load grades')
       const rows = await res.json()
 
@@ -106,7 +106,7 @@ const GradesPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this grade? This will also remove its rooms.')) return
     try {
-      const res = await fetch('/api/school/grades?id=' + id, {
+      const res = await fetch('/api/v1/school/grades?id=' + id, {
         method: 'DELETE',
       })
       if (!res.ok) {

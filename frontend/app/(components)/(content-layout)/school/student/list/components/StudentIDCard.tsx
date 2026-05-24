@@ -39,7 +39,7 @@ const StudentIDCard: React.FC<Props> = ({
     setLoading(true)
     try {
       const res = await fetch(
-        `/api/school/students/refresh-qr?id=${student.id}`,
+        `/api/v1/school/students/refresh-qr?id=${student.id}`,
         { method: 'POST' }
       )
       const json = await res.json()
@@ -67,7 +67,7 @@ const StudentIDCard: React.FC<Props> = ({
 
   useEffect(() => {
     let mounted = true
-    fetch('/api/school/settings', { cache: 'no-store' })
+    fetch('/api/v1/school/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!mounted) return
@@ -88,7 +88,7 @@ const StudentIDCard: React.FC<Props> = ({
       return
     }
     let mounted = true
-    fetch('/api/school/grades', { cache: 'no-store' })
+    fetch('/api/v1/school/grades', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!mounted) return

@@ -28,7 +28,7 @@ const StudentListPage: React.FC = () => {
     setLoadingSimple(true)
     setSimpleError(null)
     try {
-      const res = await fetch('/api/school/students?simple=1', {
+      const res = await fetch('/api/v1/school/students?simple=1', {
         cache: 'no-store',
       })
       if (!res.ok) {
@@ -63,7 +63,7 @@ const StudentListPage: React.FC = () => {
     setLoadingComplete(true)
     setCompleteError(null)
     try {
-      const res = await fetch('/api/school/students?simple=0', {
+      const res = await fetch('/api/v1/school/students?simple=0', {
         cache: 'no-store',
       })
       if (!res.ok) {
@@ -104,7 +104,7 @@ const StudentListPage: React.FC = () => {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/school/students', {
+      const res = await fetch('/api/v1/school/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

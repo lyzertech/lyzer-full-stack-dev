@@ -9,6 +9,9 @@ return [
     | Default Session Driver
     |--------------------------------------------------------------------------
     |
+    | API authentication uses auth_user_sessions + Bearer token (CustomAuthSession).
+    | This driver is only for Laravel's own session cookie (CSRF, flash, etc.).
+    |
     | This option determines the default session driver that is utilized for
     | incoming requests. Laravel supports a variety of storage options to
     | persist session data. Database storage is a great default choice.
@@ -18,7 +21,7 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    'driver' => env('SESSION_DRIVER', 'file'),
 
     /*
     |--------------------------------------------------------------------------

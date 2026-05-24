@@ -37,7 +37,7 @@ const AdjustRoomCapacityModal: React.FC<Props> = ({
     setSubmitting(true)
     try {
       const promises = editedRooms.map((r) =>
-        fetch('/api/school/grades', {
+        fetch('/api/v1/school/grades', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

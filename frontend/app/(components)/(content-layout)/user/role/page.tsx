@@ -4,6 +4,7 @@ import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'reac
 import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Alert, Button, Card, Col, Form, Row, Spinner, Table, Modal } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type UsersByRoleRow = {
   id: number
@@ -49,18 +50,20 @@ const RolePage: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/user/dashboard/users-by-role', { cache: 'no-store' })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
+      const res = await apiClient.get('/users/dashboard/users-by-role', { cache: 'no-store' })
+      if (res.status !== 200) {
+        const body = res.data || {}
         const msg = typeof body?.error === 'string' ? body.error : `Could not load roles (${res.status})`
         setError(msg)
       } else {
-        const json = await res.json()
+        const json = res.data
         const rows = Array.isArray(json?.data) ? json.data : []
         setRoles(mapUsersByRoleRows(rows))
       }
-    } catch {
-      setError('Network error while loading roles.')
+    } catch (e: any) {
+      if (e.response?.status !== 401) {
+        setError('Network error while loading roles.')
+      }
     } finally {
       setLoading(false)
     }
@@ -116,15 +119,11 @@ const RolePage: React.FC = () => {
         is_system: addRoleForm.is_system,
       }
 
-      const res = await fetch('/api/user/dashboard/roles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const res = await apiClient.post('/users/dashboard/roles', payload)
 
-      const body = await res.json().catch(() => null)
+      const body = res.data
 
-      if (!res.ok) {
+      if (res.status !== 201 && res.status !== 200) {
         if (body && typeof body === 'object' && body !== null && 'errors' in body) {
           const errs = (body as { errors?: Record<string, string[]> }).errors
           const flat = errs && typeof errs === 'object'
@@ -143,8 +142,10 @@ const RolePage: React.FC = () => {
       setShowAddRoleModal(false)
       setAddRoleForm({ name: '', slug: '', description: '', is_system: false })
       await loadRoles()
-    } catch {
-      setAddRoleError('Network error while creating role.')
+    } catch (e: any) {
+      if (e.response?.status !== 401) {
+        setAddRoleError('Network error while creating role.')
+      }
     } finally {
       setAddRoleSubmitting(false)
     }

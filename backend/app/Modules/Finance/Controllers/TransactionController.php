@@ -8,12 +8,19 @@ use App\Modules\Finance\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class TransactionController extends Controller
 {
     // GET /transactions
     public function index(Request $request): JsonResponse
     {
+        if (! Schema::hasTable('finance_transactions')) {
+            return response()->json([
+                'error' => 'Table finance_transactions does not exist. Run: php artisan migrate',
+            ], 503);
+        }
+
         $query = Transaction::with(['account.bank', 'transferToAccount', 'category'])
             ->orderBy('transaction_date', 'desc')
             ->orderBy('created_at', 'desc');
@@ -125,7 +132,7 @@ class TransactionController extends Controller
 
     private function formatTransaction(Transaction $t): array
     {
-        return array_merge($t->toArray(), [
+        return array_merge($t->attributesToArray(), [
             'account_name'             => $t->account?->name,
             'account_type'             => $t->account?->account_type,
             'bank_name'                => $t->account?->bank?->name,

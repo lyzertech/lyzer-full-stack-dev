@@ -140,7 +140,7 @@ const EMPTY_FORM: VisitReportForm = {
 
 const SALES_OPTIONS = ['David', 'Vicha', 'Heri Go', 'Dika'] as const
 
-// ─── Customer shape (read from /api/sales/customers) ─────────────────────────
+// ─── Customer shape (read from /api/v1/sales/customers) ─────────────────────────
 
 interface CustomerRecord {
   id: number
@@ -250,8 +250,8 @@ const VisitReportAiiPage: React.FC = () => {
     const loadData = async () => {
       try {
         const [vrRes, custRes] = await Promise.all([
-          fetch('/api/sales/visit-reports', { cache: 'no-store' }),
-          fetch('/api/sales/customers', { cache: 'no-store' }),
+          fetch('/api/v1/sales/visit-reports', { cache: 'no-store' }),
+          fetch('/api/v1/sales/customers', { cache: 'no-store' }),
         ])
 
         if (vrRes.ok) {
@@ -464,7 +464,7 @@ const VisitReportAiiPage: React.FC = () => {
         purpose: form.purpose.trim() || null,
       }
 
-      const res = await fetch('/api/sales/visit-reports', {
+      const res = await fetch('/api/v1/sales/visit-reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

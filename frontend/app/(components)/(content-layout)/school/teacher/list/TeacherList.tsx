@@ -28,7 +28,7 @@ const TeacherList: React.FC<TeacherListProps> = () => {
   useEffect(() => {
     const fetchInitial = async () => {
       try {
-        const res = await fetch('/api/teachers', {
+        const res = await fetch('/api/v1/teachers', {
           method: 'GET',
           cache: 'no-store',
         })
@@ -69,7 +69,7 @@ const TeacherList: React.FC<TeacherListProps> = () => {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/teachers', {
+      const res = await fetch('/api/v1/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

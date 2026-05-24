@@ -31,6 +31,7 @@ type LineItem = {
   qty: number
   unit_price: number
   discount_pct: number
+  description?: string
   note: string
 }
 
@@ -55,247 +56,26 @@ type Quotation = {
   updated_at: string
 }
 
-// ─── Seed Customers (mirrors customer list schema) ────────────────────────────
-
-type SeedCustomer = {
-  id: number
-  customer_code: string
-  name: string
-  email: string
-  company: string
-  sales: string
-  area: string
-}
-
-const SEED_CUSTOMERS: SeedCustomer[] = [
-  { id: 1, customer_code: 'CUST-000001', name: 'Budi Santoso', email: 'purchasing@sinarabadi.co.id', company: 'PT Sinar Abadi', sales: 'Bambang Tri', area: 'Jakarta' },
-  { id: 2, customer_code: 'CUST-000002', name: 'Dewi Lestari', email: 'owner@majubersama.id', company: 'CV Maju Bersama', sales: 'Setia', area: 'Bandung' },
-  { id: 3, customer_code: 'CUST-000003', name: 'Rizky Pratama', email: 'admin@nusantaralogistik.com', company: 'PT Nusantara Logistik', sales: 'Eka', area: 'Surabaya' },
-  { id: 5, customer_code: 'CUST-000005', name: 'Andi Wijaya', email: 'andi.wijaya@megajaya.co.id', company: 'PT Mega Jaya Sentosa', sales: 'David', area: 'Tangerang' },
-  { id: 6, customer_code: 'CUST-000006', name: 'Maya Putri', email: 'maya.putri@tirtautama.id', company: 'PT Tirta Utama', sales: 'Vicha', area: 'Bekasi' },
-  { id: 7, customer_code: 'CUST-000007', name: 'Heri Saputra', email: 'hsaputra@bintangmulia.com', company: 'PT Bintang Mulia', sales: 'Heri', area: 'Bogor' },
-  { id: 10, customer_code: 'CUST-000010', name: 'Fajar Hidayat', email: 'fajar@suryaagung.id', company: 'PT Surya Agung', sales: 'Setia', area: 'Palembang' },
-  { id: 15, customer_code: 'CUST-000015', name: 'Setiawan Aditya', email: 'setiawan@primafood.co.id', company: 'PT Prima Food', sales: 'Heri', area: 'Malang' },
-]
-
-// ─── Seed Products (mirrors product catalog schema) ───────────────────────────
-
-type SeedProduct = { sku: string; name: string; unit: string; selling_price: number }
-
-const SEED_PRODUCTS: SeedProduct[] = [
-  { sku: 'Accu001', name: 'Acuvim II Power Meter', unit: 'pcs', selling_price: 4500000 },
-  { sku: 'Accu002', name: 'Acuvim IIE Energy Logger', unit: 'pcs', selling_price: 6200000 },
-  { sku: 'Accu003', name: 'AXM-RS485 Communication Module', unit: 'pcs', selling_price: 850000 },
-  { sku: 'Rish001', name: 'Rish Con M+ Modbus Gateway', unit: 'pcs', selling_price: 3800000 },
-  { sku: 'Rish002', name: 'Multimet 38 PM', unit: 'pcs', selling_price: 2900000 },
-  { sku: 'CB001', name: 'Sineax CAM Transducer', unit: 'pcs', selling_price: 5100000 },
-  { sku: 'Alan001', name: 'Alan Current Transformer 100/5A', unit: 'pcs', selling_price: 420000 },
-  { sku: 'Alan002', name: 'Alan CT 200/5A', unit: 'pcs', selling_price: 560000 },
-  { sku: 'Mon001', name: 'Monarch Frequency Relay', unit: 'pcs', selling_price: 3200000 },
-  { sku: 'Lei001', name: 'Leipole Terminal Block 10A', unit: 'pcs', selling_price: 45000 },
-  { sku: 'SVC001', name: 'Commissioning & Site Survey', unit: 'visit', selling_price: 2500000 },
-  { sku: 'SVC002', name: 'Annual Maintenance Contract', unit: 'year', selling_price: 8500000 },
-]
-
-// ─── Seed Quotations ──────────────────────────────────────────────────────────
-
-const SEED_QUOTATIONS: Quotation[] = [
-  {
-    id: 1,
-    quotation_no: 'QUO-2604-0001',
-    customer_id: 1,
-    customer_name: 'Budi Santoso',
-    customer_company: 'PT Sinar Abadi',
-    customer_email: 'purchasing@sinarabadi.co.id',
-    sales_owner: 'Bambang Tri',
-    status: 'Approved',
-    validity_days: '30',
-    issued_date: '2026-04-01',
-    expiry_date: '2026-05-01',
-    subject: 'Supply of Power Meters & Accessories – Gardu Induk Project',
-    notes: 'Please confirm PO before April 28 for guaranteed delivery.',
-    terms: 'Payment 30 days after invoice. Delivery FOB Jakarta warehouse.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-1-1', product_sku: 'Accu001', product_name: 'Acuvim II Power Meter', unit: 'pcs', qty: 8, unit_price: 4500000, discount_pct: 5, note: '' },
-      { id: 'li-1-2', product_sku: 'Alan001', product_name: 'Alan Current Transformer 100/5A', unit: 'pcs', qty: 24, unit_price: 420000, discount_pct: 10, note: 'Group with panel installation' },
-      { id: 'li-1-3', product_sku: 'SVC001', product_name: 'Commissioning & Site Survey', unit: 'visit', qty: 2, unit_price: 2500000, discount_pct: 0, note: '' },
-    ],
-    created_at: '2026-04-01 08:30',
-    updated_at: '2026-04-05 14:20',
-  },
-  {
-    id: 2,
-    quotation_no: 'QUO-2604-0002',
-    customer_id: 5,
-    customer_name: 'Andi Wijaya',
-    customer_company: 'PT Mega Jaya Sentosa',
-    customer_email: 'andi.wijaya@megajaya.co.id',
-    sales_owner: 'David',
-    status: 'Sent',
-    validity_days: '14',
-    issued_date: '2026-04-08',
-    expiry_date: '2026-04-22',
-    subject: 'Rishabh Energy Monitoring System – Phase 2',
-    notes: 'Revised scope per discussion on 7 April.',
-    terms: 'Payment 50% DP, 50% upon delivery. Delivery 3–4 weeks ARO.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-2-1', product_sku: 'Rish001', product_name: 'Rish Con M+ Modbus Gateway', unit: 'pcs', qty: 3, unit_price: 3800000, discount_pct: 8, note: '' },
-      { id: 'li-2-2', product_sku: 'Rish002', product_name: 'Multimet 38 PM', unit: 'pcs', qty: 10, unit_price: 2900000, discount_pct: 8, note: '' },
-      { id: 'li-2-3', product_sku: 'Alan002', product_name: 'Alan CT 200/5A', unit: 'pcs', qty: 30, unit_price: 560000, discount_pct: 5, note: '' },
-    ],
-    created_at: '2026-04-08 10:00',
-    updated_at: '2026-04-08 16:45',
-  },
-  {
-    id: 3,
-    quotation_no: 'QUO-2604-0003',
-    customer_id: 2,
-    customer_name: 'Dewi Lestari',
-    customer_company: 'CV Maju Bersama',
-    customer_email: 'owner@majubersama.id',
-    sales_owner: 'Setia',
-    status: 'Draft',
-    validity_days: '30',
-    issued_date: '2026-04-15',
-    expiry_date: '2026-05-15',
-    subject: 'Quotation for Sineax Transducers',
-    notes: '',
-    terms: 'Standard terms apply.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-3-1', product_sku: 'CB001', product_name: 'Sineax CAM Transducer', unit: 'pcs', qty: 5, unit_price: 5100000, discount_pct: 0, note: '' },
-    ],
-    created_at: '2026-04-15 09:20',
-    updated_at: '2026-04-15 09:20',
-  },
-  {
-    id: 4,
-    quotation_no: 'QUO-2604-0004',
-    customer_id: 7,
-    customer_name: 'Heri Saputra',
-    customer_company: 'PT Bintang Mulia',
-    customer_email: 'hsaputra@bintangmulia.com',
-    sales_owner: 'Heri',
-    status: 'Rejected',
-    validity_days: '30',
-    issued_date: '2026-03-20',
-    expiry_date: '2026-04-19',
-    subject: 'Annual Maintenance & Power Meters Supply',
-    notes: 'Customer chose competitor. Follow up Q3.',
-    terms: 'Payment 30 days.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-4-1', product_sku: 'Accu002', product_name: 'Acuvim IIE Energy Logger', unit: 'pcs', qty: 4, unit_price: 6200000, discount_pct: 10, note: '' },
-      { id: 'li-4-2', product_sku: 'SVC002', product_name: 'Annual Maintenance Contract', unit: 'year', selling_price: 8500000, qty: 1, unit_price: 8500000, discount_pct: 0, note: '' },
-    ],
-    created_at: '2026-03-20 11:00',
-    updated_at: '2026-03-28 09:30',
-  },
-  {
-    id: 5,
-    quotation_no: 'QUO-2604-0005',
-    customer_id: 6,
-    customer_name: 'Maya Putri',
-    customer_company: 'PT Tirta Utama',
-    customer_email: 'maya.putri@tirtautama.id',
-    sales_owner: 'Vicha',
-    status: 'Expired',
-    validity_days: '14',
-    issued_date: '2026-03-01',
-    expiry_date: '2026-03-15',
-    subject: 'Monarch Relay & Terminal Block Package',
-    notes: 'Customer pending internal approval. Resend new quote.',
-    terms: '50% DP required.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-5-1', product_sku: 'Mon001', product_name: 'Monarch Frequency Relay', unit: 'pcs', qty: 6, unit_price: 3200000, discount_pct: 7, note: '' },
-      { id: 'li-5-2', product_sku: 'Lei001', product_name: 'Leipole Terminal Block 10A', unit: 'pcs', qty: 100, unit_price: 45000, discount_pct: 15, note: 'Bulk price' },
-    ],
-    created_at: '2026-03-01 14:30',
-    updated_at: '2026-03-15 08:00',
-  },
-  {
-    id: 6,
-    quotation_no: 'QUO-2604-0006',
-    customer_id: 10,
-    customer_name: 'Fajar Hidayat',
-    customer_company: 'PT Surya Agung',
-    customer_email: 'fajar@suryaagung.id',
-    sales_owner: 'Setia',
-    status: 'Sent',
-    validity_days: '30',
-    issued_date: '2026-04-14',
-    expiry_date: '2026-05-14',
-    subject: 'Complete Energy Management System Package',
-    notes: 'Includes optional site survey.',
-    terms: 'Payment 30 days. Warranty 12 months.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-6-1', product_sku: 'Accu001', product_name: 'Acuvim II Power Meter', unit: 'pcs', qty: 12, unit_price: 4500000, discount_pct: 10, note: '' },
-      { id: 'li-6-2', product_sku: 'Accu003', product_name: 'AXM-RS485 Communication Module', unit: 'pcs', qty: 12, unit_price: 850000, discount_pct: 10, note: '1:1 with meters' },
-      { id: 'li-6-3', product_sku: 'Alan001', product_name: 'Alan Current Transformer 100/5A', unit: 'pcs', qty: 36, unit_price: 420000, discount_pct: 12, note: '' },
-      { id: 'li-6-4', product_sku: 'SVC001', product_name: 'Commissioning & Site Survey', unit: 'visit', qty: 3, unit_price: 2500000, discount_pct: 0, note: 'All 3 sites' },
-    ],
-    created_at: '2026-04-14 09:00',
-    updated_at: '2026-04-14 17:30',
-  },
-  {
-    id: 7,
-    quotation_no: 'QUO-2604-0007',
-    customer_id: 3,
-    customer_name: 'Rizky Pratama',
-    customer_company: 'PT Nusantara Logistik',
-    customer_email: 'admin@nusantaralogistik.com',
-    sales_owner: 'Eka',
-    status: 'Draft',
-    validity_days: '30',
-    issued_date: '2026-04-18',
-    expiry_date: '2026-05-18',
-    subject: 'Warehouse Monitoring Instruments',
-    notes: 'Quoted based on BOM provided by client.',
-    terms: 'Payment 45 days.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-7-1', product_sku: 'Rish002', product_name: 'Multimet 38 PM', unit: 'pcs', qty: 5, unit_price: 2900000, discount_pct: 5, note: '' },
-      { id: 'li-7-2', product_sku: 'Alan002', product_name: 'Alan CT 200/5A', unit: 'pcs', qty: 15, unit_price: 560000, discount_pct: 5, note: '' },
-    ],
-    created_at: '2026-04-18 10:40',
-    updated_at: '2026-04-18 10:40',
-  },
-  {
-    id: 8,
-    quotation_no: 'QUO-2604-0008',
-    customer_id: 15,
-    customer_name: 'Setiawan Aditya',
-    customer_company: 'PT Prima Food',
-    customer_email: 'setiawan@primafood.co.id',
-    sales_owner: 'Heri',
-    status: 'Approved',
-    validity_days: '45',
-    issued_date: '2026-03-25',
-    expiry_date: '2026-05-09',
-    subject: 'Food Factory Power Quality Monitoring',
-    notes: 'PO received, awaiting procurement process.',
-    terms: 'Net 30 days. Delivery 4 weeks ARO.',
-    tax_pct: 11,
-    items: [
-      { id: 'li-8-1', product_sku: 'Accu002', product_name: 'Acuvim IIE Energy Logger', unit: 'pcs', qty: 6, unit_price: 6200000, discount_pct: 8, note: '' },
-      { id: 'li-8-2', product_sku: 'Accu003', product_name: 'AXM-RS485 Communication Module', unit: 'pcs', qty: 6, unit_price: 850000, discount_pct: 8, note: '' },
-      { id: 'li-8-3', product_sku: 'CB001', product_name: 'Sineax CAM Transducer', unit: 'pcs', qty: 6, unit_price: 5100000, discount_pct: 5, note: '' },
-      { id: 'li-8-4', product_sku: 'SVC002', product_name: 'Annual Maintenance Contract', unit: 'year', qty: 1, unit_price: 8500000, discount_pct: 0, note: '12-month coverage' },
-    ],
-    created_at: '2026-03-25 08:00',
-    updated_at: '2026-04-10 16:00',
-  },
-]
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SALES_LIST = ['Bambang Tri', 'Rizky', 'Eka', 'Setia', 'David', 'Vicha', 'Heri', 'Dika']
+const SALES_LIST = [
+  'Bambang Tri',
+  'Rizky',
+  'Eka',
+  'Setia',
+  'David',
+  'Vicha',
+  'Heri',
+  'Dika',
+]
 
-const STATUS_OPTIONS: QuotationStatus[] = ['Draft', 'Sent', 'Approved', 'Rejected', 'Expired']
+const STATUS_OPTIONS: QuotationStatus[] = [
+  'Draft',
+  'Sent',
+  'Approved',
+  'Rejected',
+  'Expired',
+]
 
 const STATUS_BADGE: Record<QuotationStatus, string> = {
   Draft: 'secondary-transparent',
@@ -386,8 +166,29 @@ const BLANK_LINE = (): LineItem => ({
 
 const QuotationPage: React.FC = () => {
   const pageSize = 7
-  const [quotations, setQuotations] = useState<Quotation[]>(SEED_QUOTATIONS)
+  const [quotations, setQuotations] = useState<Quotation[]>([])
+  const [dbCustomers, setDbCustomers] = useState<any[]>([])
+  const [dbProducts, setDbProducts] = useState<any[]>([])
   const [query, setQuery] = useState('')
+
+  const loadInitialData = async () => {
+    try {
+      const [qRes, cRes, pRes] = await Promise.all([
+        fetch('/api/v1/sales/quotations', { cache: 'no-store' }),
+        fetch('/api/v1/sales/customers', { cache: 'no-store' }),
+        fetch('/api/v1/sales/products', { cache: 'no-store' }),
+      ])
+      if (qRes.ok) setQuotations(await qRes.json())
+      if (cRes.ok) setDbCustomers(await cRes.json())
+      if (pRes.ok) setDbProducts(await pRes.json())
+    } catch (error) {
+      console.error('Failed to load data:', error)
+    }
+  }
+
+  useEffect(() => {
+    loadInitialData()
+  }, [])
   const [statusFilter, setStatusFilter] = useState<string>('All')
   const [salesFilter, setSalesFilter] = useState<string>('All')
   const [currentPage, setCurrentPage] = useState(1)
@@ -399,20 +200,63 @@ const QuotationPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false)
   const [editTarget, setEditTarget] = useState<Quotation | null>(null)
   const [form, setForm] = useState<QuotationForm>({ ...BLANK_FORM })
-  const [formErrors, setFormErrors] = useState<Partial<Record<keyof QuotationForm | 'items', string>>>({})
+  const [formErrors, setFormErrors] = useState<
+    Partial<Record<keyof QuotationForm | 'items', string>>
+  >({})
   const [submitting, setSubmitting] = useState(false)
 
   // preview modal
   const [previewTarget, setPreviewTarget] = useState<Quotation | null>(null)
 
-  // ── Filtering ────────────────────────────────────────────────────────────
+  // ── Print helper — isolates only the preview div ─────────────────────────
+  const handlePrint = () => {
+    const styleId = 'print-override'
+    let style = document.getElementById(styleId) as HTMLStyleElement | null
+    if (!style) {
+      style = document.createElement('style')
+      style.id = styleId
+      document.head.appendChild(style)
+    }
+    style.textContent = `
+      @media print {
+        @page { margin: 12mm 14mm; size: A4; }
+        html, body { background: #fff !important; }
+        body > * { visibility: hidden !important; }
+        #quotation-preview-root,
+        #quotation-preview-root * { visibility: visible !important; }
+        #quotation-preview-root {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          z-index: 99999 !important;
+        }
+      }
+    `
+    setTimeout(() => {
+      window.print()
+      window.addEventListener(
+        'afterprint',
+        () => {
+          style!.textContent = ''
+        },
+        { once: true },
+      )
+    }, 80)
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return quotations.filter((qt) => {
       const matchQuery =
         q.length === 0 ||
-        [qt.quotation_no, qt.customer_name, qt.customer_company, qt.subject, qt.sales_owner]
+        [
+          qt.quotation_no,
+          qt.customer_name,
+          qt.customer_company,
+          qt.subject,
+          qt.sales_owner,
+        ]
           .join(' ')
           .toLowerCase()
           .includes(q)
@@ -426,7 +270,9 @@ const QuotationPage: React.FC = () => {
   const pageStart = (currentPage - 1) * pageSize
   const paginatedQuotations = filtered.slice(pageStart, pageStart + pageSize)
 
-  useEffect(() => { setCurrentPage(1) }, [query, statusFilter, salesFilter])
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [query, statusFilter, salesFilter])
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages)
   }, [currentPage, totalPages])
@@ -446,7 +292,13 @@ const QuotationPage: React.FC = () => {
       if (qt.status === 'Sent') sentCount++
       if (qt.status === 'Approved') approvedCount++
     }
-    return { totalValue, draftCount, sentCount, approvedCount, total: quotations.length }
+    return {
+      totalValue,
+      draftCount,
+      sentCount,
+      approvedCount,
+      total: quotations.length,
+    }
   }, [quotations])
 
   // ── Sales filter list ────────────────────────────────────────────────────
@@ -486,7 +338,8 @@ const QuotationPage: React.FC = () => {
 
   // ── Line item mutations ───────────────────────────────────────────────────
 
-  const addLine = () => setForm((f) => ({ ...f, items: [...f.items, BLANK_LINE()] }))
+  const addLine = () =>
+    setForm((f) => ({ ...f, items: [...f.items, BLANK_LINE()] }))
 
   const removeLine = (id: string) =>
     setForm((f) => ({ ...f, items: f.items.filter((it) => it.id !== id) }))
@@ -498,22 +351,23 @@ const QuotationPage: React.FC = () => {
     }))
 
   const pickProduct = (lineId: string, sku: string) => {
-    const prod = SEED_PRODUCTS.find((p) => p.sku === sku)
+    const prod = dbProducts.find((p) => p.sku === sku)
     if (!prod) return
     updateLine(lineId, {
       product_sku: prod.sku,
       product_name: prod.name,
-      unit: prod.unit,
-      unit_price: prod.selling_price,
+      unit: prod.unit || 'pcs',
+      unit_price: prod.selling_price || 0,
+      description: prod.description || '',
     })
   }
 
   const pickCustomer = (custId: string) => {
-    const cust = SEED_CUSTOMERS.find((c) => String(c.id) === custId)
+    const cust = dbCustomers.find((c) => String(c.id) === custId)
     setForm((f) => ({
       ...f,
       customer_id: custId,
-      sales_owner: cust ? cust.sales : f.sales_owner,
+      sales_owner: cust ? cust.sales || f.sales_owner : f.sales_owner,
     }))
   }
 
@@ -529,10 +383,17 @@ const QuotationPage: React.FC = () => {
     const errs: typeof formErrors = {}
     if (!form.customer_id) errs.customer_id = 'Customer is required'
     if (!form.subject.trim()) errs.subject = 'Subject is required'
-    if (form.items.length === 0) errs.items = 'At least one line item is required'
+    if (form.items.length === 0)
+      errs.items = 'At least one line item is required'
     for (const it of form.items) {
-      if (!it.product_sku) { errs.items = 'All line items must have a product selected'; break }
-      if (it.qty <= 0) { errs.items = 'Qty must be > 0 for all items'; break }
+      if (!it.product_sku) {
+        errs.items = 'All line items must have a product selected'
+        break
+      }
+      if (it.qty <= 0) {
+        errs.items = 'Qty must be > 0 for all items'
+        break
+      }
     }
     setFormErrors(errs)
     return Object.keys(errs).length === 0
@@ -545,81 +406,102 @@ const QuotationPage: React.FC = () => {
 
     await new Promise((r) => setTimeout(r, 400)) // simulate API
 
-    const customer = SEED_CUSTOMERS.find((c) => String(c.id) === form.customer_id)!
+    const customer = dbCustomers.find((c) => String(c.id) === form.customer_id)!
     const now = new Date().toLocaleString('sv-SE')
     const expiry = addDays(form.issued_date, Number(form.validity_days))
 
     if (editTarget) {
-      const updated: Quotation = {
-        ...editTarget,
-        customer_id: customer.id,
-        customer_name: customer.name,
-        customer_company: customer.company,
-        customer_email: customer.email,
-        sales_owner: form.sales_owner || customer.sales,
-        status: form.status,
-        validity_days: form.validity_days,
-        issued_date: form.issued_date,
-        expiry_date: expiry,
-        subject: form.subject.trim(),
-        notes: form.notes.trim(),
-        terms: form.terms.trim(),
-        tax_pct: Number(form.tax_pct) || 11,
-        items: form.items,
-        updated_at: now,
-      }
-      setQuotations((prev) => prev.map((q) => (q.id === editTarget.id ? updated : q)))
+      const res = await fetch(`/api/v1/sales/quotations/${editTarget.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: customer.id,
+          customer_name: customer.name,
+          customer_company: customer.company,
+          customer_email: customer.email,
+          sales_owner: form.sales_owner || customer.sales || '',
+          status: form.status,
+          validity_days: form.validity_days,
+          issued_date: form.issued_date,
+          expiry_date: expiry,
+          subject: form.subject.trim(),
+          notes: form.notes.trim(),
+          terms: form.terms.trim(),
+          tax_pct: Number(form.tax_pct) || 11,
+          items: form.items,
+        }),
+      })
+      if (!res.ok) alert('Error: ' + (await res.text()))
     } else {
-      const newQ: Quotation = {
-        id: Date.now(),
-        quotation_no: genQuotationNo(quotations),
-        customer_id: customer.id,
-        customer_name: customer.name,
-        customer_company: customer.company,
-        customer_email: customer.email,
-        sales_owner: form.sales_owner || customer.sales,
-        status: form.status,
-        validity_days: form.validity_days,
-        issued_date: form.issued_date,
-        expiry_date: expiry,
-        subject: form.subject.trim(),
-        notes: form.notes.trim(),
-        terms: form.terms.trim(),
-        tax_pct: Number(form.tax_pct) || 11,
-        items: form.items,
-        created_at: now,
-        updated_at: now,
-      }
-      setQuotations((prev) => [newQ, ...prev])
+      const res = await fetch('/api/v1/sales/quotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: customer.id,
+          customer_name: customer.name,
+          customer_company: customer.company,
+          customer_email: customer.email,
+          sales_owner: form.sales_owner || customer.sales || '',
+          status: form.status,
+          validity_days: form.validity_days,
+          issued_date: form.issued_date,
+          expiry_date: expiry,
+          subject: form.subject.trim(),
+          notes: form.notes.trim(),
+          terms: form.terms.trim(),
+          tax_pct: Number(form.tax_pct) || 11,
+          items: form.items,
+        }),
+      })
+      if (!res.ok) alert('Error: ' + (await res.text()))
     }
+
+    await loadInitialData()
 
     setSubmitting(false)
     setShowModal(false)
   }
 
-  const handleStatusChange = (qt: Quotation, newStatus: QuotationStatus) => {
-    setQuotations((prev) =>
-      prev.map((q) =>
-        q.id === qt.id ? { ...q, status: newStatus, updated_at: new Date().toLocaleString('sv-SE') } : q,
-      ),
-    )
-    if (selected?.id === qt.id) setSelected((s) => s ? { ...s, status: newStatus } : s)
+  const handleStatusChange = async (
+    qt: Quotation,
+    newStatus: QuotationStatus,
+  ) => {
+    await fetch(`/api/v1/sales/quotations/${qt.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    })
+
+    await loadInitialData()
+
+    if (selected?.id === qt.id) {
+      setSelected((s) => (s ? { ...s, status: newStatus } : s))
+    }
   }
 
-  const handleDuplicate = (qt: Quotation) => {
-    const now = new Date().toLocaleString('sv-SE')
-    const newQ: Quotation = {
-      ...qt,
-      id: Date.now(),
-      quotation_no: genQuotationNo(quotations),
-      status: 'Draft',
-      issued_date: today,
-      expiry_date: addDays(today, Number(qt.validity_days)),
-      created_at: now,
-      updated_at: now,
-      items: qt.items.map((it) => ({ ...it, id: uid() })),
-    }
-    setQuotations((prev) => [newQ, ...prev])
+  const handleDuplicate = async (qt: Quotation) => {
+    await fetch('/api/v1/sales/quotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_id: qt.customer_id,
+        customer_name: qt.customer_name,
+        customer_company: qt.customer_company,
+        customer_email: qt.customer_email,
+        sales_owner: qt.sales_owner,
+        status: 'Draft',
+        validity_days: qt.validity_days,
+        issued_date: today,
+        expiry_date: addDays(today, Number(qt.validity_days)),
+        subject: qt.subject,
+        notes: qt.notes,
+        terms: qt.terms,
+        tax_pct: qt.tax_pct,
+        items: qt.items.map((it) => ({ ...it, id: undefined })),
+      }),
+    })
+
+    await loadInitialData()
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -658,7 +540,11 @@ const QuotationPage: React.FC = () => {
               </Dropdown.Item>
             </li>
           </SpkDropdown>
-          <SpkButton Buttonvariant="primary" Customclass="btn btn-wave" onClick={openAddModal}>
+          <SpkButton
+            Buttonvariant="primary"
+            Customclass="btn btn-wave"
+            onClick={openAddModal}
+          >
             <i className="ri-add-line me-1"></i>New Quotation
           </SpkButton>
         </div>
@@ -688,10 +574,15 @@ const QuotationPage: React.FC = () => {
               <div className="d-flex align-items-center justify-content-between">
                 <div>
                   <div className="text-muted fs-12">Pipeline Value</div>
-                  <div className="fs-18 fw-semibold" style={{ fontSize: '15px' }}>
+                  <div
+                    className="fs-18 fw-semibold"
+                    style={{ fontSize: '15px' }}
+                  >
                     {currency.format(kpis.totalValue)}
                   </div>
-                  <div className="text-muted fs-11 mt-1">Incl. tax, all statuses</div>
+                  <div className="text-muted fs-11 mt-1">
+                    Incl. tax, all statuses
+                  </div>
                 </div>
                 <span className="avatar avatar-md bg-success-transparent">
                   <i className="ri-money-dollar-circle-line fs-18"></i>
@@ -707,7 +598,9 @@ const QuotationPage: React.FC = () => {
                 <div>
                   <div className="text-muted fs-12">Sent / Pending</div>
                   <div className="fs-18 fw-semibold">{kpis.sentCount}</div>
-                  <div className="text-muted fs-11 mt-1">Awaiting customer response</div>
+                  <div className="text-muted fs-11 mt-1">
+                    Awaiting customer response
+                  </div>
                 </div>
                 <span className="avatar avatar-md bg-info-transparent">
                   <i className="ri-send-plane-line fs-18"></i>
@@ -723,7 +616,9 @@ const QuotationPage: React.FC = () => {
                 <div>
                   <div className="text-muted fs-12">Approved</div>
                   <div className="fs-18 fw-semibold">{kpis.approvedCount}</div>
-                  <div className="text-muted fs-11 mt-1">Ready for PO / invoice</div>
+                  <div className="text-muted fs-11 mt-1">
+                    Ready for PO / invoice
+                  </div>
                 </div>
                 <span className="avatar avatar-md bg-warning-transparent">
                   <i className="ri-checkbox-circle-line fs-18"></i>
@@ -755,7 +650,9 @@ const QuotationPage: React.FC = () => {
             >
               <option value="All">All Status</option>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </Form.Select>
             <Form.Select
@@ -765,7 +662,9 @@ const QuotationPage: React.FC = () => {
               style={{ width: 150 }}
             >
               {salesOwnerList.map((s) => (
-                <option key={s} value={s}>{s === 'All' ? 'All Sales' : s}</option>
+                <option key={s} value={s}>
+                  {s === 'All' ? 'All Sales' : s}
+                </option>
               ))}
             </Form.Select>
           </div>
@@ -802,7 +701,9 @@ const QuotationPage: React.FC = () => {
                           onClick={() => setSelected(qt)}
                           role="button"
                           tabIndex={0}
-                          onKeyDown={(e) => e.key === 'Enter' && setSelected(qt)}
+                          onKeyDown={(e) =>
+                            e.key === 'Enter' && setSelected(qt)
+                          }
                         >
                           {qt.quotation_no}
                         </div>
@@ -811,10 +712,16 @@ const QuotationPage: React.FC = () => {
                     </td>
                     <td style={{ maxWidth: 200 }}>
                       <div className="lh-1">
-                        <div className="fw-medium text-truncate" style={{ maxWidth: 200 }}>
+                        <div
+                          className="fw-medium text-truncate"
+                          style={{ maxWidth: 200 }}
+                        >
                           {qt.customer_company}
                         </div>
-                        <div className="text-muted fs-12 text-truncate" style={{ maxWidth: 200 }}>
+                        <div
+                          className="text-muted fs-12 text-truncate"
+                          style={{ maxWidth: 200 }}
+                        >
                           {qt.customer_name}
                         </div>
                       </div>
@@ -827,10 +734,14 @@ const QuotationPage: React.FC = () => {
                       >
                         {qt.subject}
                       </div>
-                      <div className="text-muted fs-12">{qt.items.length} item(s)</div>
+                      <div className="text-muted fs-12">
+                        {qt.items.length} item(s)
+                      </div>
                     </td>
                     <td>
-                      <div className="fw-semibold">{currency.format(grand)}</div>
+                      <div className="fw-semibold">
+                        {currency.format(grand)}
+                      </div>
                     </td>
                     <td>
                       <SpkBadge
@@ -840,11 +751,15 @@ const QuotationPage: React.FC = () => {
                         {qt.status}
                       </SpkBadge>
                       {isExpired && (
-                        <span className="badge bg-danger-transparent ms-1 fs-10">Overdue</span>
+                        <span className="badge bg-danger-transparent ms-1 fs-10">
+                          Overdue
+                        </span>
                       )}
                     </td>
                     <td>
-                      <div className={`fs-13 ${isExpired ? 'text-danger fw-semibold' : ''}`}>
+                      <div
+                        className={`fs-13 ${isExpired ? 'text-danger fw-semibold' : ''}`}
+                      >
                         {qt.expiry_date}
                       </div>
                     </td>
@@ -859,13 +774,22 @@ const QuotationPage: React.FC = () => {
                         <Dropdown.Item as="li" onClick={() => setSelected(qt)}>
                           <i className="ri-eye-line me-2"></i>View Detail
                         </Dropdown.Item>
-                        <Dropdown.Item as="li" onClick={() => setPreviewTarget(qt)}>
+                        <Dropdown.Item
+                          as="li"
+                          onClick={() => setPreviewTarget(qt)}
+                        >
                           <i className="ri-file-text-line me-2"></i>Preview PDF
                         </Dropdown.Item>
-                        <Dropdown.Item as="li" onClick={() => openEditModal(qt)}>
+                        <Dropdown.Item
+                          as="li"
+                          onClick={() => openEditModal(qt)}
+                        >
                           <i className="ri-pencil-line me-2"></i>Edit
                         </Dropdown.Item>
-                        <Dropdown.Item as="li" onClick={() => handleDuplicate(qt)}>
+                        <Dropdown.Item
+                          as="li"
+                          onClick={() => handleDuplicate(qt)}
+                        >
                           <i className="ri-file-copy-line me-2"></i>Duplicate
                         </Dropdown.Item>
                         <Dropdown.Divider />
@@ -875,7 +799,8 @@ const QuotationPage: React.FC = () => {
                             className="text-info"
                             onClick={() => handleStatusChange(qt, 'Sent')}
                           >
-                            <i className="ri-send-plane-line me-2"></i>Mark as Sent
+                            <i className="ri-send-plane-line me-2"></i>Mark as
+                            Sent
                           </Dropdown.Item>
                         )}
                         {qt.status === 'Sent' && (
@@ -885,14 +810,16 @@ const QuotationPage: React.FC = () => {
                               className="text-success"
                               onClick={() => handleStatusChange(qt, 'Approved')}
                             >
-                              <i className="ri-check-double-line me-2"></i>Mark as Approved
+                              <i className="ri-check-double-line me-2"></i>Mark
+                              as Approved
                             </Dropdown.Item>
                             <Dropdown.Item
                               as="li"
                               className="text-danger"
                               onClick={() => handleStatusChange(qt, 'Rejected')}
                             >
-                              <i className="ri-close-circle-line me-2"></i>Mark as Rejected
+                              <i className="ri-close-circle-line me-2"></i>Mark
+                              as Rejected
                             </Dropdown.Item>
                           </>
                         )}
@@ -917,13 +844,17 @@ const QuotationPage: React.FC = () => {
             <div>
               Showing{' '}
               <span className="fw-semibold">
-                {filtered.length === 0 ? 0 : pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}
+                {filtered.length === 0 ? 0 : pageStart + 1}–
+                {Math.min(pageStart + pageSize, filtered.length)}
               </span>{' '}
-              of <span className="fw-semibold">{filtered.length}</span> filtered from{' '}
-              <span className="fw-semibold">{quotations.length}</span>
+              of <span className="fw-semibold">{filtered.length}</span> filtered
+              from <span className="fw-semibold">{quotations.length}</span>
             </div>
             <div className="ms-auto">
-              <nav aria-label="Quotation pagination" className="pagination-style-2">
+              <nav
+                aria-label="Quotation pagination"
+                className="pagination-style-2"
+              >
                 <Pagination className="mb-0 flex-wrap">
                   <Pagination.Prev
                     disabled={currentPage === 1}
@@ -931,18 +862,22 @@ const QuotationPage: React.FC = () => {
                   >
                     Prev
                   </Pagination.Prev>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Pagination.Item
-                      key={page}
-                      active={page === currentPage}
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </Pagination.Item>
-                  ))}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <Pagination.Item
+                        key={page}
+                        active={page === currentPage}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </Pagination.Item>
+                    ),
+                  )}
                   <Pagination.Next
                     disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                   >
                     Next
                   </Pagination.Next>
@@ -969,10 +904,17 @@ const QuotationPage: React.FC = () => {
               {/* Header info */}
               <div className="d-flex align-items-start justify-content-between gap-2">
                 <div>
-                  <div className="fw-semibold fs-16">{selected.quotation_no}</div>
-                  <div className="text-muted fs-12">{selected.issued_date} → {selected.expiry_date}</div>
+                  <div className="fw-semibold fs-16">
+                    {selected.quotation_no}
+                  </div>
+                  <div className="text-muted fs-12">
+                    {selected.issued_date} → {selected.expiry_date}
+                  </div>
                 </div>
-                <SpkBadge variant="" Customclass={`badge bg-${STATUS_BADGE[selected.status]}`}>
+                <SpkBadge
+                  variant=""
+                  Customclass={`badge bg-${STATUS_BADGE[selected.status]}`}
+                >
                   {selected.status}
                 </SpkBadge>
               </div>
@@ -980,19 +922,27 @@ const QuotationPage: React.FC = () => {
               {/* Customer & Sales */}
               <Card className="custom-card mb-0">
                 <Card.Body className="p-3">
-                  <div className="fs-12 text-muted fw-semibold mb-2 text-uppercase">Customer</div>
+                  <div className="fs-12 text-muted fw-semibold mb-2 text-uppercase">
+                    Customer
+                  </div>
                   <div className="d-flex flex-column gap-1">
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">Company</span>
-                      <span className="fw-medium">{selected.customer_company}</span>
+                      <span className="fw-medium">
+                        {selected.customer_company}
+                      </span>
                     </div>
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">Contact</span>
-                      <span className="fw-medium">{selected.customer_name}</span>
+                      <span className="fw-medium">
+                        {selected.customer_name}
+                      </span>
                     </div>
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">Email</span>
-                      <span className="fw-medium">{selected.customer_email}</span>
+                      <span className="fw-medium">
+                        {selected.customer_email}
+                      </span>
                     </div>
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">Sales Owner</span>
@@ -1005,10 +955,14 @@ const QuotationPage: React.FC = () => {
               {/* Subject & notes */}
               <Card className="custom-card mb-0">
                 <Card.Body className="p-3">
-                  <div className="fs-12 text-muted fw-semibold mb-2 text-uppercase">Subject</div>
+                  <div className="fs-12 text-muted fw-semibold mb-2 text-uppercase">
+                    Subject
+                  </div>
                   <div className="fw-medium mb-2">{selected.subject}</div>
                   {selected.notes && (
-                    <div className="text-muted fs-12 border-top pt-2">{selected.notes}</div>
+                    <div className="text-muted fs-12 border-top pt-2">
+                      {selected.notes}
+                    </div>
                   )}
                 </Card.Body>
               </Card>
@@ -1016,7 +970,9 @@ const QuotationPage: React.FC = () => {
               {/* Line items */}
               <Card className="custom-card mb-0">
                 <Card.Body className="p-3">
-                  <div className="fs-12 text-muted fw-semibold mb-2 text-uppercase">Line Items</div>
+                  <div className="fs-12 text-muted fw-semibold mb-2 text-uppercase">
+                    Line Items
+                  </div>
                   <div className="d-flex flex-column gap-2">
                     {selected.items.map((it, idx) => {
                       const sub = calcLineSubtotal(it)
@@ -1024,18 +980,37 @@ const QuotationPage: React.FC = () => {
                         <div key={it.id} className="border rounded p-2">
                           <div className="d-flex align-items-start justify-content-between gap-1">
                             <div>
-                              <div className="fw-medium fs-13">{it.product_name}</div>
-                              <div className="text-muted fs-11">{it.product_sku}</div>
+                              <div className="fw-medium fs-13">
+                                {it.product_name}
+                              </div>
+                              <div className="text-muted fs-11">
+                                {it.product_sku}
+                              </div>
                             </div>
                             <div className="text-end">
-                              <div className="fw-semibold fs-13">{currency.format(sub)}</div>
+                              <div className="fw-semibold fs-13">
+                                {currency.format(sub)}
+                              </div>
                               <div className="text-muted fs-11">
                                 {it.qty} × {currency.format(it.unit_price)}
-                                {it.discount_pct > 0 && ` − ${it.discount_pct}%`}
+                                {it.discount_pct > 0 &&
+                                  ` − ${it.discount_pct}%`}
                               </div>
                             </div>
                           </div>
-                          {it.note && <div className="text-muted fs-11 mt-1 fst-italic">{it.note}</div>}
+                          {it.description && (
+                            <div
+                              className="text-muted fs-11 mt-1 font-monospace"
+                              style={{ whiteSpace: 'pre-wrap' }}
+                            >
+                              {it.description}
+                            </div>
+                          )}
+                          {it.note && (
+                            <div className="text-danger fs-11 mt-1 fst-italic">
+                              {it.note}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -1047,20 +1022,31 @@ const QuotationPage: React.FC = () => {
               <Card className="custom-card mb-0">
                 <Card.Body className="p-3">
                   {(() => {
-                    const { subtotal, tax, grand } = calcQuotationTotals(selected.items, selected.tax_pct)
+                    const { subtotal, tax, grand } = calcQuotationTotals(
+                      selected.items,
+                      selected.tax_pct,
+                    )
                     return (
                       <div className="d-flex flex-column gap-1">
                         <div className="d-flex justify-content-between">
                           <span className="text-muted">Subtotal</span>
-                          <span className="fw-medium">{currency.format(subtotal)}</span>
+                          <span className="fw-medium">
+                            {currency.format(subtotal)}
+                          </span>
                         </div>
                         <div className="d-flex justify-content-between">
-                          <span className="text-muted">PPN {selected.tax_pct}%</span>
-                          <span className="fw-medium">{currency.format(tax)}</span>
+                          <span className="text-muted">
+                            PPN {selected.tax_pct}%
+                          </span>
+                          <span className="fw-medium">
+                            {currency.format(tax)}
+                          </span>
                         </div>
                         <div className="d-flex justify-content-between border-top pt-2 mt-1">
                           <span className="fw-semibold">Grand Total</span>
-                          <span className="fw-bold text-primary">{currency.format(grand)}</span>
+                          <span className="fw-bold text-primary">
+                            {currency.format(grand)}
+                          </span>
                         </div>
                       </div>
                     )
@@ -1072,7 +1058,9 @@ const QuotationPage: React.FC = () => {
               {selected.terms && (
                 <Card className="custom-card mb-0">
                   <Card.Body className="p-3">
-                    <div className="fs-12 text-muted fw-semibold mb-1 text-uppercase">Terms & Conditions</div>
+                    <div className="fs-12 text-muted fw-semibold mb-1 text-uppercase">
+                      Terms & Conditions
+                    </div>
                     <div className="text-muted fs-12">{selected.terms}</div>
                   </Card.Body>
                 </Card>
@@ -1090,14 +1078,20 @@ const QuotationPage: React.FC = () => {
                 <Button
                   variant="outline-secondary"
                   className="btn-wave flex-fill"
-                  onClick={() => { setPreviewTarget(selected); setSelected(null) }}
+                  onClick={() => {
+                    setPreviewTarget(selected)
+                    setSelected(null)
+                  }}
                 >
                   <i className="ri-file-text-line me-2"></i>Preview
                 </Button>
                 <Button
                   variant="outline-light"
                   className="btn-wave flex-fill"
-                  onClick={() => { handleDuplicate(selected); setSelected(null) }}
+                  onClick={() => {
+                    handleDuplicate(selected)
+                    setSelected(null)
+                  }}
                 >
                   <i className="ri-file-copy-line me-2"></i>Duplicate
                 </Button>
@@ -1163,20 +1157,24 @@ const QuotationPage: React.FC = () => {
                 <div className="d-flex flex-column gap-3">
                   {/* Customer */}
                   <Form.Group>
-                    <Form.Label>Customer <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      Customer <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Select
                       value={form.customer_id}
                       onChange={(e) => pickCustomer(e.target.value)}
                       isInvalid={!!formErrors.customer_id}
                     >
                       <option value="">— Select Customer —</option>
-                      {SEED_CUSTOMERS.map((c) => (
+                      {dbCustomers.map((c) => (
                         <option key={c.id} value={String(c.id)}>
                           {c.company} ({c.name})
                         </option>
                       ))}
                     </Form.Select>
-                    <Form.Control.Feedback type="invalid">{formErrors.customer_id}</Form.Control.Feedback>
+                    <Form.Control.Feedback type="invalid">
+                      {formErrors.customer_id}
+                    </Form.Control.Feedback>
                   </Form.Group>
 
                   {/* Sales owner */}
@@ -1184,25 +1182,35 @@ const QuotationPage: React.FC = () => {
                     <Form.Label>Sales Owner</Form.Label>
                     <Form.Select
                       value={form.sales_owner}
-                      onChange={(e) => setForm((f) => ({ ...f, sales_owner: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, sales_owner: e.target.value }))
+                      }
                     >
                       <option value="">— Select Sales —</option>
                       {SALES_LIST.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
                     </Form.Select>
                   </Form.Group>
 
                   {/* Subject */}
                   <Form.Group>
-                    <Form.Label>Subject / Title <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      Subject / Title <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Control
                       value={form.subject}
-                      onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, subject: e.target.value }))
+                      }
                       placeholder="e.g. Supply of Power Meters – Project Name"
                       isInvalid={!!formErrors.subject}
                     />
-                    <Form.Control.Feedback type="invalid">{formErrors.subject}</Form.Control.Feedback>
+                    <Form.Control.Feedback type="invalid">
+                      {formErrors.subject}
+                    </Form.Control.Feedback>
                   </Form.Group>
 
                   {/* Date + validity */}
@@ -1213,7 +1221,12 @@ const QuotationPage: React.FC = () => {
                         <Form.Control
                           type="date"
                           value={form.issued_date}
-                          onChange={(e) => setForm((f) => ({ ...f, issued_date: e.target.value }))}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              issued_date: e.target.value,
+                            }))
+                          }
                         />
                       </Form.Group>
                     </Col>
@@ -1223,7 +1236,11 @@ const QuotationPage: React.FC = () => {
                         <Form.Select
                           value={form.validity_days}
                           onChange={(e) =>
-                            setForm((f) => ({ ...f, validity_days: e.target.value as QuotationValidity }))
+                            setForm((f) => ({
+                              ...f,
+                              validity_days: e.target
+                                .value as QuotationValidity,
+                            }))
                           }
                         >
                           <option value="7">7 days</option>
@@ -1244,11 +1261,16 @@ const QuotationPage: React.FC = () => {
                         <Form.Select
                           value={form.status}
                           onChange={(e) =>
-                            setForm((f) => ({ ...f, status: e.target.value as QuotationStatus }))
+                            setForm((f) => ({
+                              ...f,
+                              status: e.target.value as QuotationStatus,
+                            }))
                           }
                         >
                           {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
                           ))}
                         </Form.Select>
                       </Form.Group>
@@ -1261,7 +1283,9 @@ const QuotationPage: React.FC = () => {
                           min={0}
                           max={100}
                           value={form.tax_pct}
-                          onChange={(e) => setForm((f) => ({ ...f, tax_pct: e.target.value }))}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, tax_pct: e.target.value }))
+                          }
                         />
                       </Form.Group>
                     </Col>
@@ -1274,7 +1298,9 @@ const QuotationPage: React.FC = () => {
                       as="textarea"
                       rows={2}
                       value={form.notes}
-                      onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, notes: e.target.value }))
+                      }
                       placeholder="Internal notes or customer-facing remarks..."
                     />
                   </Form.Group>
@@ -1286,7 +1312,9 @@ const QuotationPage: React.FC = () => {
                       as="textarea"
                       rows={2}
                       value={form.terms}
-                      onChange={(e) => setForm((f) => ({ ...f, terms: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, terms: e.target.value }))
+                      }
                     />
                   </Form.Group>
                 </div>
@@ -1298,18 +1326,31 @@ const QuotationPage: React.FC = () => {
                   <Form.Label className="mb-0 fw-semibold">
                     Line Items <span className="text-danger">*</span>
                   </Form.Label>
-                  <Button variant="outline-primary" size="sm" className="btn-wave" onClick={addLine}>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    className="btn-wave"
+                    onClick={addLine}
+                  >
                     <i className="ri-add-line me-1"></i>Add Item
                   </Button>
                 </div>
 
                 {formErrors.items && (
-                  <div className="text-danger fs-12 mb-2">{formErrors.items}</div>
+                  <div className="text-danger fs-12 mb-2">
+                    {formErrors.items}
+                  </div>
                 )}
 
-                <div className="d-flex flex-column gap-2" style={{ maxHeight: 420, overflowY: 'auto' }}>
+                <div
+                  className="d-flex flex-column gap-2"
+                  style={{ maxHeight: 420, overflowY: 'auto' }}
+                >
                   {form.items.map((it, idx) => {
                     const sub = calcLineSubtotal(it)
+                    const matchedProduct = dbProducts.find(
+                      (p) => p.sku === it.product_sku,
+                    )
                     return (
                       <Card key={it.id} className="custom-card mb-0 border">
                         <Card.Body className="p-2">
@@ -1320,43 +1361,72 @@ const QuotationPage: React.FC = () => {
                               </Form.Label>
                               <Form.Select
                                 value={it.product_sku}
-                                onChange={(e) => pickProduct(it.id, e.target.value)}
+                                onChange={(e) =>
+                                  pickProduct(it.id, e.target.value)
+                                }
                                 size="sm"
                               >
                                 <option value="">— Select Product —</option>
-                                {SEED_PRODUCTS.map((p) => (
+                                {dbProducts.map((p) => (
                                   <option key={p.sku} value={p.sku}>
                                     [{p.sku}] {p.name}
                                   </option>
                                 ))}
                               </Form.Select>
                             </Col>
+                            <Col xs={12}>
+                              <Form.Label className="mb-1 fs-12 text-muted">
+                                Description
+                              </Form.Label>
+                              <Form.Control
+                                as="textarea"
+                                rows={4}
+                                size="sm"
+                                placeholder="Edit description..."
+                                value={it.description || ''}
+                                onChange={(e) =>
+                                  updateLine(it.id, {
+                                    description: e.target.value,
+                                  })
+                                }
+                              />
+                            </Col>
                             <Col xs={4}>
-                              <Form.Label className="mb-1 fs-12 text-muted">Qty</Form.Label>
+                              <Form.Label className="mb-1 fs-12 text-muted">
+                                Qty
+                              </Form.Label>
                               <Form.Control
                                 type="number"
                                 size="sm"
                                 min={1}
                                 value={it.qty}
                                 onChange={(e) =>
-                                  updateLine(it.id, { qty: Number(e.target.value) || 1 })
+                                  updateLine(it.id, {
+                                    qty: Number(e.target.value) || 1,
+                                  })
                                 }
                               />
                             </Col>
                             <Col xs={4}>
-                              <Form.Label className="mb-1 fs-12 text-muted">Unit Price</Form.Label>
+                              <Form.Label className="mb-1 fs-12 text-muted">
+                                Unit Price
+                              </Form.Label>
                               <Form.Control
                                 type="number"
                                 size="sm"
                                 min={0}
                                 value={it.unit_price}
                                 onChange={(e) =>
-                                  updateLine(it.id, { unit_price: Number(e.target.value) || 0 })
+                                  updateLine(it.id, {
+                                    unit_price: Number(e.target.value) || 0,
+                                  })
                                 }
                               />
                             </Col>
                             <Col xs={4}>
-                              <Form.Label className="mb-1 fs-12 text-muted">Disc %</Form.Label>
+                              <Form.Label className="mb-1 fs-12 text-muted">
+                                Disc %
+                              </Form.Label>
                               <Form.Control
                                 type="number"
                                 size="sm"
@@ -1364,7 +1434,9 @@ const QuotationPage: React.FC = () => {
                                 max={100}
                                 value={it.discount_pct}
                                 onChange={(e) =>
-                                  updateLine(it.id, { discount_pct: Number(e.target.value) || 0 })
+                                  updateLine(it.id, {
+                                    discount_pct: Number(e.target.value) || 0,
+                                  })
                                 }
                               />
                             </Col>
@@ -1373,10 +1445,15 @@ const QuotationPage: React.FC = () => {
                                 size="sm"
                                 placeholder="Line note (optional)"
                                 value={it.note}
-                                onChange={(e) => updateLine(it.id, { note: e.target.value })}
+                                onChange={(e) =>
+                                  updateLine(it.id, { note: e.target.value })
+                                }
                               />
                             </Col>
-                            <Col xs={12} className="d-flex align-items-center justify-content-between">
+                            <Col
+                              xs={12}
+                              className="d-flex align-items-center justify-content-between"
+                            >
                               <span className="fw-semibold text-primary fs-13">
                                 {currency.format(sub)}
                               </span>
@@ -1413,7 +1490,9 @@ const QuotationPage: React.FC = () => {
                           <span>{currency.format(formTotals.subtotal)}</span>
                         </div>
                         <div className="d-flex justify-content-between fs-13">
-                          <span className="text-muted">PPN {form.tax_pct}%</span>
+                          <span className="text-muted">
+                            PPN {form.tax_pct}%
+                          </span>
                           <span>{currency.format(formTotals.tax)}</span>
                         </div>
                         <div className="d-flex justify-content-between border-top pt-2 mt-1">
@@ -1430,14 +1509,29 @@ const QuotationPage: React.FC = () => {
             </Row>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="outline-light" className="btn-wave" onClick={() => setShowModal(false)}>
+            <Button
+              variant="outline-light"
+              className="btn-wave"
+              onClick={() => setShowModal(false)}
+            >
               Cancel
             </Button>
-            <Button variant="primary" type="submit" className="btn-wave" disabled={submitting}>
+            <Button
+              variant="primary"
+              type="submit"
+              className="btn-wave"
+              disabled={submitting}
+            >
               {submitting ? (
-                <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</>
+                <>
+                  <span className="spinner-border spinner-border-sm me-2"></span>
+                  Saving...
+                </>
               ) : (
-                <><i className="ri-save-line me-2"></i>{editTarget ? 'Update Quotation' : 'Create Quotation'}</>
+                <>
+                  <i className="ri-save-line me-2"></i>
+                  {editTarget ? 'Update Quotation' : 'Create Quotation'}
+                </>
               )}
             </Button>
           </Modal.Footer>
@@ -1458,239 +1552,615 @@ const QuotationPage: React.FC = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="bg-white text-dark">
-          {previewTarget && (() => {
-            const { subtotal, tax, grand } = calcQuotationTotals(previewTarget.items, previewTarget.tax_pct)
+          {previewTarget &&
+            (() => {
+              const { subtotal, tax, grand } = calcQuotationTotals(
+                previewTarget.items,
+                previewTarget.tax_pct,
+              )
 
-            // Always light-palette badge — never reads CSS vars
-            const statusColors: Record<QuotationStatus, { bg: string; fg: string }> = {
-              Draft:    { bg: '#f1f5f9', fg: '#475569' },
-              Sent:     { bg: '#dbeafe', fg: '#1d4ed8' },
-              Approved: { bg: '#dcfce7', fg: '#15803d' },
-              Rejected: { bg: '#fee2e2', fg: '#b91c1c' },
-              Expired:  { bg: '#fef9c3', fg: '#92400e' },
-            }
-            const sc = statusColors[previewTarget.status]
+              // Always light-palette badge — never reads CSS vars
+              const statusColors: Record<
+                QuotationStatus,
+                { bg: string; fg: string }
+              > = {
+                Draft: { bg: '#f1f5f9', fg: '#475569' },
+                Sent: { bg: '#dbeafe', fg: '#1d4ed8' },
+                Approved: { bg: '#dcfce7', fg: '#15803d' },
+                Rejected: { bg: '#fee2e2', fg: '#b91c1c' },
+                Expired: { bg: '#fef9c3', fg: '#92400e' },
+              }
+              const sc = statusColors[previewTarget.status]
 
-            // Shared text tokens — all explicit, no CSS variable
-            const T = {
-              dark:    '#1e293b',
-              mid:     '#334155',
-              muted:   '#64748b',
-              faint:   '#94a3b8',
-              border:  '#e2e8f0',
-              accent:  '#4f46e5',
-              bgPaper: '#ffffff',
-              bgStripe:'#f8fafc',
-              bgBillTo:'#f0f4ff',
-              bgTotals:'#eef2ff',
-            }
+              // Shared text tokens — updated for formal look
+              const T = {
+                dark: '#000000',
+                mid: '#1e293b',
+                muted: '#475569',
+                faint: '#e23232',
+                border: '#000000',
+                accent: '#000000',
+                bgPaper: '#ffffff',
+                bgStripe: '#ffffff',
+                bgBillTo: '#ffffff',
+                bgTotals: '#e5e7eb',
+              }
 
-            const cellStyle = (align: 'left' | 'right' = 'left'): React.CSSProperties => ({
-              padding: '8px 10px',
-              textAlign: align,
-              color: T.dark,
-              borderColor: T.border,
-              background: 'transparent',
-            })
+              const numFormat = new Intl.NumberFormat('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })
 
-            return (
-              <div
-                id="quotation-preview-print"
-                style={{
-                  fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
-                  fontSize: 13,
-                  color: T.dark,
-                  background: T.bgPaper,
-                  borderRadius: 8,
-                  padding: '36px 40px',
-                }}
-              >
-                {/* ── Company header ──────────────────────────────────────── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 20, color: T.accent, letterSpacing: -0.3 }}>
-                      PT AII / SEP
+              const cellStyle = (
+                align: 'left' | 'right' = 'left',
+              ): React.CSSProperties => ({
+                padding: '6px 10px',
+                textAlign: align,
+                color: '#000',
+                borderColor: '#000',
+                background: 'transparent',
+              })
+
+              return (
+                <div id="quotation-preview-root">
+                  <div
+                    id="quotation-preview-print"
+                    style={{
+                      fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
+                      fontSize: 13,
+                      color: T.dark,
+                      background: T.bgPaper,
+                      borderRadius: 8,
+                      padding: '36px 40px',
+                    }}
+                  >
+                    {/* ── Company header (new formal style) ───────────────────── */}
+                    {/* Top row: centered company name + logo on right */}
+                    <div
+                      style={{
+                        position: 'relative',
+                        marginBottom: 4,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {/* Company logo top-right */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: -20,
+                          width: 80,
+                          height: 72,
+                        }}
+                      >
+                        <img
+                          src="/aii-ori.png"
+                          alt="Company Logo"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                          }}
+                        />
+                      </div>
+                      {/* Company name + title */}
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 17,
+                          color: T.dark,
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        PT. AMPTRON INSTRUMINDO
+                      </div>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          color: T.dark,
+                          letterSpacing: 2,
+                          marginTop: 2,
+                        }}
+                      >
+                        OFFICIAL QUOTATION
+                      </div>
                     </div>
-                    <div style={{ color: T.muted, fontSize: 12, marginTop: 2 }}>
-                      Jl. Industri Raya No. 1, Jakarta 12940
+
+                    {/* ── Info table (To / Attn / Sales / Date etc.) ────────────── */}
+                    <table
+                      style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        fontSize: 12,
+                        marginTop: 18,
+                        marginBottom: 18,
+                        borderTop: `1.5px solid ${T.dark}`,
+                        borderBottom: `1.5px solid ${T.dark}`,
+                      }}
+                    >
+                      <tbody>
+                        {[
+                          {
+                            left: {
+                              label: 'To',
+                              value: previewTarget.customer_company,
+                            },
+                            right: {
+                              label: 'Sales',
+                              value: previewTarget.sales_owner,
+                            },
+                          },
+                          {
+                            left: {
+                              label: 'Attn.',
+                              value: previewTarget.customer_name,
+                            },
+                            right: {
+                              label: 'Date',
+                              value: previewTarget.issued_date
+                                ? new Date(
+                                  previewTarget.issued_date,
+                                ).toLocaleDateString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric',
+                                })
+                                : '',
+                            },
+                          },
+                          {
+                            left: { label: 'CC.', value: '' },
+                            right: {
+                              label: 'Your Ref No.',
+                              value: previewTarget.notes || '',
+                            },
+                          },
+                          {
+                            left: { label: 'Tel/Fax', value: '' },
+                            right: {
+                              label: 'Our Ref No.',
+                              value: previewTarget.quotation_no,
+                            },
+                          },
+                          {
+                            left: {
+                              label: 'Re.',
+                              value: previewTarget.subject,
+                            },
+                            right: { label: 'Pages', value: '1' },
+                          },
+                        ].map((row, i) => (
+                          <tr key={i}>
+                            {/* LEFT label */}
+                            <td
+                              style={{
+                                padding: '2px 8px',
+                                width: 60,
+                                color: T.dark,
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {row.left.label}
+                            </td>
+                            <td
+                              style={{
+                                padding: '2px 2px',
+                                width: 12,
+                                color: T.dark,
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              :
+                            </td>
+                            <td
+                              style={{
+                                padding: '2px 8px',
+                                color: T.dark,
+                                verticalAlign: 'top',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {row.left.value}
+                            </td>
+                            {/* RIGHT label */}
+                            <td
+                              style={{
+                                padding: '2px 8px',
+                                width: 100,
+                                color: T.dark,
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {row.right.label}
+                            </td>
+                            <td
+                              style={{
+                                padding: '2px 2px',
+                                width: 12,
+                                color: T.dark,
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              :
+                            </td>
+                            <td
+                              style={{
+                                padding: '2px 8px',
+                                color: T.dark,
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {row.right.value}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* ── Intro paragraph ───────────────────────────────────────── */}
+                    <div
+                      style={{ fontSize: 12, color: T.dark, marginBottom: 18 }}
+                    >
+                      <div style={{ marginBottom: 4 }}>Dear Sir/Madam,</div>
+                      <div>
+                        With reference to your inquiry, we are pleased to submit
+                        our offer as follows:
+                      </div>
                     </div>
-                    <div style={{ color: T.muted, fontSize: 12 }}>
-                      sales@aii-sep.co.id &nbsp;|&nbsp; +62 21-555-0100
+
+                    {/* ── Line items table ─────────────────────────────────────── */}
+                    <table
+                      style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        fontSize: 12,
+                        marginBottom: 0,
+                      }}
+                    >
+                      <thead>
+                        <tr
+                          style={{
+                            background: '#f8fafc',
+                            borderTop: '1.5px solid #000',
+                            borderBottom: '1.5px solid #000',
+                          }}
+                        >
+                          {(
+                            [
+                              { label: '#', w: 28, align: 'left' },
+                              {
+                                label: 'Description',
+                                w: 'auto',
+                                align: 'left',
+                              },
+                              { label: 'Unit', w: 54, align: 'left' },
+                              { label: 'Qty', w: 46, align: 'right' },
+                              { label: 'Unit Price', w: 120, align: 'right' },
+                              { label: 'Disc', w: 46, align: 'right' },
+                              { label: 'Subtotal', w: 130, align: 'right' },
+                            ] as {
+                              label: string
+                              w: number | string
+                              align: 'left' | 'right'
+                            }[]
+                          ).map((h) => (
+                            <th
+                              key={h.label}
+                              style={{
+                                width: h.w,
+                                textAlign: h.align,
+                                padding: '8px 10px',
+                                color: '#000',
+                                fontWeight: 700,
+                                fontSize: 11,
+                                background: 'transparent',
+                              }}
+                            >
+                              {h.label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewTarget.items.map((it, idx) => (
+                          <tr
+                            key={it.id}
+                            style={{
+                              background:
+                                idx % 2 === 0 ? '#ffffff' : T.bgStripe,
+                              borderBottom: `1px solid ${T.border}`,
+                            }}
+                          >
+                            <td
+                              style={{
+                                ...cellStyle(),
+                                color: T.muted,
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {idx + 1}
+                            </td>
+                            <td
+                              style={{ ...cellStyle(), verticalAlign: 'top' }}
+                            >
+                              <div style={{ fontWeight: 600, color: T.dark }}>
+                                {it.product_name}
+                              </div>
+                              {it.description && (
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color: T.muted,
+                                    marginTop: 4,
+                                    whiteSpace: 'pre-wrap',
+                                  }}
+                                >
+                                  {it.description}
+                                </div>
+                              )}
+                              {it.note && (
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color: T.faint,
+                                    marginTop: 2,
+                                    fontStyle: 'italic',
+                                  }}
+                                >
+                                  {it.note}
+                                </div>
+                              )}
+                            </td>
+                            <td
+                              style={{
+                                ...cellStyle(),
+                                color: T.muted,
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {it.unit}
+                            </td>
+                            <td
+                              style={{
+                                ...cellStyle('right'),
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {it.qty}
+                            </td>
+                            <td
+                              style={{
+                                ...cellStyle('right'),
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {numFormat.format(it.unit_price)}
+                            </td>
+                            <td
+                              style={{
+                                ...cellStyle('right'),
+                                color: it.discount_pct > 0 ? '#059669' : '#000',
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {it.discount_pct > 0
+                                ? `−${it.discount_pct}%`
+                                : '—'}
+                            </td>
+                            <td
+                              style={{
+                                ...cellStyle('right'),
+                                fontWeight: 600,
+                                verticalAlign: 'top',
+                              }}
+                            >
+                              {numFormat.format(calcLineSubtotal(it))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={4} style={{ padding: 0 }}></td>
+                          <td
+                            colSpan={2}
+                            style={{
+                              ...cellStyle('right'),
+                              fontWeight: 700,
+                              borderTop: '1.5px solid #000',
+                            }}
+                          >
+                            Sub-Total
+                          </td>
+                          <td
+                            style={{
+                              ...cellStyle('right'),
+                              fontWeight: 600,
+                              borderTop: '1.5px solid #000',
+                            }}
+                          >
+                            {numFormat.format(subtotal)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colSpan={4} style={{ padding: 0 }}></td>
+                          <td
+                            colSpan={2}
+                            style={{ ...cellStyle('right'), fontWeight: 700 }}
+                          >
+                            PPN {previewTarget.tax_pct}%
+                          </td>
+                          <td
+                            style={{ ...cellStyle('right'), fontWeight: 600 }}
+                          >
+                            {numFormat.format(tax)}
+                          </td>
+                        </tr>
+                        <tr style={{ background: '#e5e7eb' }}>
+                          <td colSpan={4} style={{ padding: 0 }}></td>
+                          <td
+                            colSpan={2}
+                            style={{
+                              ...cellStyle('right'),
+                              fontWeight: 700,
+                              borderTop: '1.5px solid #000',
+                              borderBottom: '1.5px solid #000',
+                            }}
+                          >
+                            Total
+                          </td>
+                          <td
+                            style={{
+                              ...cellStyle('right'),
+                              fontWeight: 700,
+                              borderTop: '1.5px solid #000',
+                              borderBottom: '1.5px solid #000',
+                            }}
+                          >
+                            {numFormat.format(grand)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+
+                    {/* ── Terms & Conditions & Signature section ──────────────── */}
+                    <div style={{ display: 'flex', marginTop: 32, gap: 40 }}>
+                      {/* Left side: Conditions */}
+                      <div style={{ flex: 1, fontSize: 11 }}>
+                        <table
+                          style={{
+                            borderCollapse: 'collapse',
+                            marginBottom: 20,
+                          }}
+                        >
+                          <tbody>
+                            <tr>
+                              <td style={{ width: 80, padding: '2px 0' }}>
+                                Prices
+                              </td>
+                              <td style={{ padding: '2px 0' }}>
+                                : Loco Jakarta
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '2px 0' }}>Payment</td>
+                              <td style={{ padding: '2px 0' }}>
+                                : Cash Before Delivery
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '2px 0' }}>Lead Time</td>
+                              <td style={{ padding: '2px 0' }}>
+                                : 3-5 working days after payment received
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '2px 0' }}>Validity</td>
+                              <td style={{ padding: '2px 0' }}>
+                                : {previewTarget.validity_days} Days
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            textDecoration: 'underline',
+                            marginBottom: 4,
+                          }}
+                        >
+                          Other Sales Conditions:
+                        </div>
+                        <ol style={{ paddingLeft: 18, margin: 0 }}>
+                          <li>
+                            Standard 12 month limited hardware warranty against
+                            manufacturing defects &amp; poor workmanship
+                          </li>
+                          <li>
+                            Price is for supply &amp; delivery of parts only
+                            unless otherwise stated
+                          </li>
+                          <li>
+                            No order cancellations are allowed for any reason
+                            after order has been placed
+                          </li>
+                        </ol>
+                      </div>
+
+                      {/* Right side: Message & Signature placeholder */}
+                      <div style={{ width: 300, fontSize: 11 }}>
+                        <p>
+                          Hope you will find this offer is in compliance with
+                          your requirement.
+                        </p>
+                        <p>
+                          Should you need any further clarification and/or
+                          information, please do not hesitate to contact us.
+                        </p>
+                        <p style={{ marginTop: 20 }}>Your faithfully,</p>
+
+                        <div style={{ marginTop: 40, textAlign: 'center' }}>
+                          <div
+                            style={{
+                              fontStyle: 'italic',
+                              textDecoration: 'underline',
+                              fontWeight: 700,
+                              marginBottom: 15,
+                            }}
+                          >
+                            - computer generated, no signature required -
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: 12 }}>
+                            {previewTarget.sales_owner.toUpperCase()} -
+                            0818830818
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Document footer ─────────────────────────────────────── */}
+                    <div
+                      style={{
+                        marginTop: 40,
+                        borderTop: '1px solid #000',
+                        paddingTop: 10,
+                        textAlign: 'center',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        lineHeight: 1.5,
+                        color: '#000',
+                      }}
+                    >
+                      <div>
+                        Komplek Rukan Taman Meruya Blok N 15 - 16, Meruya Utara,
+                        Kembangan, Jakarta Barat 11620, INDONESIA
+                      </div>
+                      <div>T: (+62-21) 585 5055, 586 0826, 586 0828</div>
+                      <div>
+                        Email: bisnis@amptron-indo.com &nbsp;&nbsp; Website :
+                        www.amptron-indo.com
+                      </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 800, fontSize: 24, letterSpacing: 2, color: T.dark, textTransform: 'uppercase' }}>
-                      Quotation
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: T.accent, marginTop: 2 }}>
-                      {previewTarget.quotation_no}
-                    </div>
-                    <div style={{ color: T.muted, fontSize: 12, marginTop: 4 }}>
-                      Issued:&nbsp;<strong style={{ color: T.dark }}>{previewTarget.issued_date}</strong>
-                    </div>
-                    <div style={{ color: T.muted, fontSize: 12 }}>
-                      Expires:&nbsp;<strong style={{ color: T.dark }}>{previewTarget.expiry_date}</strong>
-                    </div>
-                    <span style={{
-                      display: 'inline-block', marginTop: 6,
-                      padding: '3px 12px', borderRadius: 20,
-                      fontSize: 11, fontWeight: 700,
-                      background: sc.bg, color: sc.fg,
-                      letterSpacing: 0.5, textTransform: 'uppercase',
-                    }}>
-                      {previewTarget.status}
-                    </span>
-                  </div>
                 </div>
-
-                {/* ── Gradient divider ─────────────────────────────────────── */}
-                <div style={{
-                  height: 2,
-                  background: `linear-gradient(90deg,${T.accent},#818cf8)`,
-                  borderRadius: 2,
-                  marginBottom: 22,
-                }} />
-
-                {/* ── Bill To ──────────────────────────────────────────────── */}
-                <div style={{
-                  background: T.bgBillTo,
-                  border: `1px solid #c7d2fe`,
-                  borderLeft: `4px solid ${T.accent}`,
-                  borderRadius: 6,
-                  padding: '12px 16px',
-                  marginBottom: 18,
-                }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: T.faint, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                    Bill To
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: T.dark }}>{previewTarget.customer_company}</div>
-                  <div style={{ color: T.mid, fontSize: 13, marginTop: 2 }}>{previewTarget.customer_name}</div>
-                  <div style={{ color: T.muted, fontSize: 12, marginTop: 1 }}>{previewTarget.customer_email}</div>
-                </div>
-
-                {/* ── Subject ──────────────────────────────────────────────── */}
-                <div style={{ marginBottom: 18, color: T.mid, fontSize: 13 }}>
-                  <span style={{ fontWeight: 700, color: T.muted }}>Re: </span>{previewTarget.subject}
-                </div>
-
-                {/* ── Line items table ─────────────────────────────────────── */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 0 }}>
-                  <thead>
-                    <tr style={{ background: T.accent }}>
-                      {(
-                        [
-                          { label: '#',           w: 28,    align: 'left'  },
-                          { label: 'Description', w: 'auto',align: 'left'  },
-                          { label: 'Unit',        w: 54,    align: 'left'  },
-                          { label: 'Qty',         w: 46,    align: 'right' },
-                          { label: 'Unit Price',  w: 120,   align: 'right' },
-                          { label: 'Disc',        w: 46,    align: 'right' },
-                          { label: 'Subtotal',    w: 130,   align: 'right' },
-                        ] as { label: string; w: number | string; align: 'left' | 'right' }[]
-                      ).map((h) => (
-                        <th key={h.label} style={{
-                          width: h.w,
-                          textAlign: h.align,
-                          padding: '9px 10px',
-                          color: '#ffffff',
-                          fontWeight: 600,
-                          fontSize: 11,
-                          letterSpacing: 0.3,
-                          borderBottom: `2px solid #4338ca`,
-                          background: 'transparent',
-                        }}>
-                          {h.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewTarget.items.map((it, idx) => (
-                      <tr key={it.id} style={{ background: idx % 2 === 0 ? '#ffffff' : T.bgStripe, borderBottom: `1px solid ${T.border}` }}>
-                        <td style={{ ...cellStyle(), color: T.muted, verticalAlign: 'top' }}>{idx + 1}</td>
-                        <td style={{ ...cellStyle(), verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: 600, color: T.dark }}>{it.product_name}</div>
-                          {it.note && (
-                            <div style={{ fontSize: 11, color: T.faint, marginTop: 2, fontStyle: 'italic' }}>{it.note}</div>
-                          )}
-                        </td>
-                        <td style={{ ...cellStyle(), color: T.muted, verticalAlign: 'top' }}>{it.unit}</td>
-                        <td style={{ ...cellStyle('right'), verticalAlign: 'top' }}>{it.qty}</td>
-                        <td style={{ ...cellStyle('right'), verticalAlign: 'top' }}>{currency.format(it.unit_price)}</td>
-                        <td style={{ ...cellStyle('right'), color: it.discount_pct > 0 ? '#059669' : T.faint, verticalAlign: 'top' }}>
-                          {it.discount_pct > 0 ? `−${it.discount_pct}%` : '—'}
-                        </td>
-                        <td style={{ ...cellStyle('right'), fontWeight: 600, verticalAlign: 'top' }}>
-                          {currency.format(calcLineSubtotal(it))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ borderTop: `1px solid ${T.border}` }}>
-                      <td colSpan={6} style={{ ...cellStyle('right'), color: T.muted }}>Subtotal</td>
-                      <td style={{ ...cellStyle('right'), fontWeight: 600 }}>{currency.format(subtotal)}</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={6} style={{ ...cellStyle('right'), color: T.muted }}>PPN {previewTarget.tax_pct}%</td>
-                      <td style={{ ...cellStyle('right'), fontWeight: 600 }}>{currency.format(tax)}</td>
-                    </tr>
-                    <tr style={{ background: T.bgTotals, borderTop: `2px solid #c7d2fe` }}>
-                      <td colSpan={6} style={{ ...cellStyle('right'), fontWeight: 700, fontSize: 13, background: T.bgTotals }}>
-                        Grand Total
-                      </td>
-                      <td style={{ ...cellStyle('right'), fontWeight: 800, fontSize: 15, color: T.accent, background: T.bgTotals }}>
-                        {currency.format(grand)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-
-                {/* ── Terms ────────────────────────────────────────────────── */}
-                <div style={{
-                  marginTop: 22, padding: '12px 16px',
-                  background: '#f8fafc',
-                  border: `1px solid ${T.border}`,
-                  borderRadius: 6, fontSize: 12,
-                }}>
-                  <div style={{ fontWeight: 700, color: T.mid, marginBottom: 4 }}>Terms &amp; Conditions</div>
-                  <div style={{ color: T.muted, lineHeight: 1.6 }}>
-                    {previewTarget.terms || 'Standard terms apply.'}
-                  </div>
-                </div>
-
-                {/* ── Signature footer ─────────────────────────────────────── */}
-                <div style={{ marginTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div style={{ fontSize: 12, color: T.muted }}>
-                    Sales Representative:&nbsp;
-                    <strong style={{ color: T.dark }}>{previewTarget.sales_owner}</strong>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, color: T.muted, marginBottom: 32 }}>Authorized by:</div>
-                    <div style={{ borderTop: `1px solid ${T.faint}`, width: 160 }} />
-                    <div style={{ fontSize: 12, color: T.muted, marginTop: 4 }}>Director / Sales Manager</div>
-                  </div>
-                </div>
-
-                {/* ── Document footer ─────────────────────────────────────── */}
-                <div style={{
-                  marginTop: 20, paddingTop: 12,
-                  borderTop: `1px solid ${T.border}`,
-                  textAlign: 'center',
-                  fontSize: 10, color: '#cbd5e1', letterSpacing: 0.4,
-                }}>
-                  Generated by LyZer Sales System &nbsp;·&nbsp;{' '}
-                  {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </div>
-              </div>
-            )
-          })()}
+              )
+            })()}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="outline-light" className="btn-wave" onClick={() => setPreviewTarget(null)}>
+          <Button
+            variant="outline-light"
+            className="btn-wave"
+            onClick={() => setPreviewTarget(null)}
+          >
             Close
           </Button>
-          <Button variant="primary" className="btn-wave" onClick={() => window.print()}>
+          <Button variant="primary" className="btn-wave" onClick={handlePrint}>
             <i className="ri-printer-line me-2"></i>Print / Save PDF
           </Button>
         </Modal.Footer>

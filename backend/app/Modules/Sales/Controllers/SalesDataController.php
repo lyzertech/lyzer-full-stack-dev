@@ -141,6 +141,7 @@ class SalesDataController extends Controller
                 'model',
                 'type',
                 'unit',
+                'description',
                 'cost_price',
                 'selling_price',
                 'stock_qty',
@@ -361,5 +362,209 @@ class SalesDataController extends Controller
             return 'No';
         }
         return 'Unknown';
+    }
+
+    public function quotations(): JsonResponse
+    {
+        $rows = DB::table('sales_quotations')
+            ->whereNull('deleted_at')
+            ->orderByDesc('id')
+            ->get();
+
+        $itemRows = DB::table('sales_quotation_items')
+            ->whereIn('quotation_id', $rows->pluck('id'))
+            ->get()
+            ->groupBy('quotation_id');
+
+        $payload = $rows->map(function ($row) use ($itemRows) {
+            $items = $itemRows->get($row->id, collect())->map(function ($item) {
+                return [
+                    'id' => (string) $item->id,
+                    'product_sku' => (string) $item->product_sku,
+                    'product_name' => (string) $item->product_name,
+                    'unit' => (string) $item->unit,
+                    'qty' => (int) $item->qty,
+                    'unit_price' => (float) $item->unit_price,
+                    'discount_pct' => (float) $item->discount_pct,
+                    'description' => (string) $item->description,
+                    'note' => (string) $item->note,
+                ];
+            })->values();
+
+            return [
+                'id' => (int) $row->id,
+                'quotation_no' => (string) $row->quotation_no,
+                'customer_id' => (int) $row->customer_id,
+                'customer_name' => (string) $row->customer_name,
+                'customer_company' => (string) $row->customer_company,
+                'customer_email' => (string) $row->customer_email,
+                'sales_owner' => (string) $row->sales_owner,
+                'status' => (string) $row->status,
+                'validity_days' => (string) $row->validity_days,
+                'issued_date' => $row->issued_date ? (string) $row->issued_date : null,
+                'expiry_date' => $row->expiry_date ? (string) $row->expiry_date : null,
+                'subject' => (string) $row->subject,
+                'notes' => (string) $row->notes,
+                'terms' => (string) $row->terms,
+                'tax_pct' => (float) $row->tax_pct,
+                'created_at' => (string) $row->created_at,
+                'updated_at' => (string) $row->updated_at,
+                'items' => $items,
+            ];
+        })->values();
+
+        return response()->json($payload);
+    }
+
+    public function storeQuotation(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_id' => ['required', 'integer'],
+            'customer_name' => ['nullable', 'string', 'max:255'],
+            'customer_company' => ['nullable', 'string', 'max:255'],
+            'customer_email' => ['nullable', 'email', 'max:255'],
+            'sales_owner' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'string', 'max:50'],
+            'validity_days' => ['nullable', 'string', 'max:10'],
+            'issued_date' => ['nullable', 'date'],
+            'expiry_date' => ['nullable', 'date'],
+            'subject' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'terms' => ['nullable', 'string'],
+            'tax_pct' => ['nullable', 'numeric'],
+            'items' => ['required', 'array'],
+            'items.*.product_sku' => ['required', 'string', 'max:100'],
+            'items.*.product_name' => ['required', 'string', 'max:255'],
+            'items.*.unit' => ['nullable', 'string', 'max:50'],
+            'items.*.qty' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.discount_pct' => ['nullable', 'numeric', 'min:0'],
+            'items.*.description' => ['nullable', 'string'],
+            'items.*.note' => ['nullable', 'string'],
+        ]);
+
+        $now = now();
+        $userId = optional($request->user())->id;
+
+        $last = DB::table('sales_quotations')->orderByDesc('id')->first();
+        $nextSeq = $last ? $last->id + 1 : 1;
+        $quotationNo = 'QUO-' . date('ym') . '-' . str_pad((string) $nextSeq, 4, '0', STR_PAD_LEFT);
+
+        DB::beginTransaction();
+
+        try {
+            $id = DB::table('sales_quotations')->insertGetId([
+                'quotation_no' => $quotationNo,
+                'customer_id' => $validated['customer_id'],
+                'customer_name' => $validated['customer_name'] ?? null,
+                'customer_company' => $validated['customer_company'] ?? null,
+                'customer_email' => $validated['customer_email'] ?? null,
+                'sales_owner' => $validated['sales_owner'] ?? null,
+                'status' => $validated['status'],
+                'validity_days' => $validated['validity_days'] ?? null,
+                'issued_date' => $validated['issued_date'] ?? null,
+                'expiry_date' => $validated['expiry_date'] ?? null,
+                'subject' => $validated['subject'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'terms' => $validated['terms'] ?? null,
+                'tax_pct' => $validated['tax_pct'] ?? 11,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            $itemsData = collect($validated['items'])->map(function ($item) use ($id, $now) {
+                return [
+                    'quotation_id' => $id,
+                    'product_sku' => $item['product_sku'],
+                    'product_name' => $item['product_name'],
+                    'unit' => $item['unit'] ?? 'pcs',
+                    'qty' => $item['qty'],
+                    'unit_price' => $item['unit_price'],
+                    'discount_pct' => $item['discount_pct'] ?? 0,
+                    'description' => $item['description'] ?? null,
+                    'note' => $item['note'] ?? null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            })->toArray();
+
+            DB::table('sales_quotation_items')->insert($itemsData);
+
+            DB::commit();
+
+            return response()->json(['message' => 'Quotation created successfully', 'id' => $id], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to write to DB'], 500);
+        }
+    }
+
+    public function updateQuotation($idTarget, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['nullable', 'string', 'max:50'],
+            'customer_id' => ['nullable', 'integer'],
+            'customer_name' => ['nullable', 'string', 'max:255'],
+            'customer_company' => ['nullable', 'string', 'max:255'],
+            'customer_email' => ['nullable', 'email', 'max:255'],
+            'sales_owner' => ['nullable', 'string', 'max:255'],
+            'validity_days' => ['nullable', 'string', 'max:10'],
+            'issued_date' => ['nullable', 'date'],
+            'expiry_date' => ['nullable', 'date'],
+            'subject' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'terms' => ['nullable', 'string'],
+            'tax_pct' => ['nullable', 'numeric'],
+            'items' => ['nullable', 'array'],
+        ]);
+
+        $now = now();
+        $userId = optional($request->user())->id;
+
+        DB::beginTransaction();
+
+        try {
+            $updateData = [];
+            foreach (['customer_id', 'customer_name', 'customer_company', 'customer_email', 'sales_owner', 'status', 'validity_days', 'issued_date', 'expiry_date', 'subject', 'notes', 'terms', 'tax_pct'] as $field) {
+                if (array_key_exists($field, $validated)) {
+                    $updateData[$field] = $validated[$field];
+                }
+            }
+
+            if (!empty($updateData)) {
+                $updateData['updated_by'] = $userId;
+                $updateData['updated_at'] = $now;
+                DB::table('sales_quotations')->where('id', $idTarget)->update($updateData);
+            }
+
+            if (isset($validated['items']) && is_array($validated['items'])) {
+                DB::table('sales_quotation_items')->where('quotation_id', $idTarget)->delete();
+                $itemsData = collect($validated['items'])->map(function ($item) use ($idTarget, $now) {
+                    return [
+                        'quotation_id' => $idTarget,
+                        'product_sku' => $item['product_sku'],
+                        'product_name' => $item['product_name'],
+                        'unit' => $item['unit'] ?? 'pcs',
+                        'qty' => $item['qty'],
+                        'unit_price' => $item['unit_price'],
+                        'discount_pct' => $item['discount_pct'] ?? 0,
+                        'description' => $item['description'] ?? null,
+                        'note' => $item['note'] ?? null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                })->toArray();
+                DB::table('sales_quotation_items')->insert($itemsData);
+            }
+
+            DB::commit();
+
+            return response()->json(['message' => 'Quotation updated successfully'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to write to DB'], 500);
+        }
     }
 }

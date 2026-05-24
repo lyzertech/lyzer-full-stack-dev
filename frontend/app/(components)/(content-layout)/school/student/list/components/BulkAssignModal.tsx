@@ -27,7 +27,7 @@ const BulkAssignModal: React.FC<Props> = ({
     if (!show) return
     setError(null)
     // fetch grades and nested rooms
-    fetch('/api/school/grades', { cache: 'no-store' })
+    fetch('/api/v1/school/grades', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         // aggregate grades with rooms
@@ -60,7 +60,7 @@ const BulkAssignModal: React.FC<Props> = ({
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/school/students/bulk-assign', {
+      const res = await fetch('/api/v1/school/students/bulk-assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

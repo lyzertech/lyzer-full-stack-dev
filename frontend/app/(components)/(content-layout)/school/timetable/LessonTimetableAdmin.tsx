@@ -43,7 +43,7 @@ const LessonTimetableAdmin: React.FC = () => {
   useEffect(() => {
     const fetchGrades = async () => {
       try {
-        const res = await fetch('/api/school/grades', { cache: 'no-store' })
+        const res = await fetch('/api/v1/school/grades', { cache: 'no-store' })
         if (!res.ok) throw new Error('Failed to fetch grades')
         const rows = await res.json()
         const map = new Map<
@@ -124,7 +124,7 @@ const LessonTimetableAdmin: React.FC = () => {
       setTeachersLoading(true)
       setTeachersError(null)
       try {
-        const res = await fetch('/api/teachers', {
+        const res = await fetch('/api/v1/teachers', {
           method: 'GET',
           cache: 'no-store',
         })
@@ -151,7 +151,7 @@ const LessonTimetableAdmin: React.FC = () => {
     setSubjectsLoading(true)
     setSubjectsError(null)
     try {
-      const res = await fetch('/api/subjects', {
+      const res = await fetch('/api/v1/subjects', {
         method: 'GET',
         cache: 'no-store',
       })

@@ -4,8 +4,11 @@ import React, { Fragment, useEffect, useState } from 'react'
 import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Card, Col, Row } from 'react-bootstrap'
-import { getDashboardSummary } from '@/app/actions/finance/dashboard.actions'
-import type { DashboardSummary } from '@/app/actions/finance/dashboard.actions'
+import {
+  getDashboardSummary,
+  type DashboardSummary,
+} from '@/app/actions/finance/dashboard.actions'
+import { useAuth } from '@/shared/auth/AuthContext'
 
 const formatCurrencyWithSpaces = (amount: unknown): string => {
   const num =
@@ -25,13 +28,15 @@ const formatCurrencyWithSpaces = (amount: unknown): string => {
 }
 
 const FinanceDashboard: React.FC = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return
     loadDashboard()
-  }, [])
+  }, [authLoading, isAuthenticated])
 
   async function loadDashboard() {
     setLoading(true)

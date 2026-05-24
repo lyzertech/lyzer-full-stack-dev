@@ -5,14 +5,14 @@ import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Button, Card, Col, Row, Modal, Form, Table } from 'react-bootstrap'
 import {
-  getAccounts,
   createAccount,
   updateAccount,
   deleteAccount,
+  type Account,
 } from '@/app/actions/finance/accounts.actions'
-import { getBanks } from '@/app/actions/finance/banks.actions'
-import type { AccountWithBank } from '@/lib/finance/repositories/accounts.repository'
-import type { Bank } from '@/lib/finance/repositories/banks.repository'
+import { getFinanceReference } from '@/app/actions/finance/reference.actions'
+import type { Bank } from '@/app/actions/finance/banks.actions'
+import { useAuth } from '@/shared/auth/AuthContext'
 
 type AccountType = 'Checking' | 'Savings' | 'Credit' | 'Investment' | 'Cash' | 'Other'
 
@@ -34,12 +34,14 @@ const formatCurrencyWithSpaces = (amount: unknown): string => {
 }
 
 const AccountsPage: React.FC = () => {
-  const [accounts, setAccounts] = useState<AccountWithBank[]>([])
+  const { isAuthenticated, loading: authLoading } = useAuth()
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [banks, setBanks] = useState<Bank[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [editingAccount, setEditingAccount] = useState<AccountWithBank | null>(null)
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<{
     bank_id: number
@@ -62,17 +64,15 @@ const AccountsPage: React.FC = () => {
   })
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return
     loadData()
-  }, [])
+  }, [authLoading, isAuthenticated])
 
   async function loadData() {
     setLoading(true)
     setError(null)
     try {
-      const [accountsData, banksData] = await Promise.all([
-        getAccounts(),
-        getBanks(),
-      ])
+      const { accounts: accountsData, banks: banksData } = await getFinanceReference()
       setAccounts(accountsData)
       setBanks(banksData)
     } catch (err: any) {
@@ -83,7 +83,7 @@ const AccountsPage: React.FC = () => {
     }
   }
 
-  const handleOpenModal = (account?: AccountWithBank) => {
+  const handleOpenModal = (account?: Account) => {
     if (account) {
       setEditingAccount(account)
       setForm({
@@ -115,7 +115,7 @@ const AccountsPage: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingAccount(null)
-    setError(null)
+    setFormError(null)
   }
 
   const handleChange = (e: any) => {
@@ -136,7 +136,7 @@ const AccountsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    setError(null)
+    setFormError(null)
     try {
       if (editingAccount) {
         await updateAccount({ id: editingAccount.id, ...form })
@@ -147,7 +147,7 @@ const AccountsPage: React.FC = () => {
       loadData()
     } catch (err: any) {
       console.error(err)
-      setError(err.message || 'Failed to save account')
+      setFormError(err.message || 'Failed to save account')
     } finally {
       setSubmitting(false)
     }
@@ -161,6 +161,52 @@ const AccountsPage: React.FC = () => {
     } catch (err: any) {
       alert(err.message || 'Failed to delete account')
     }
+  }
+
+  if (loading) {
+    return (
+      <Fragment>
+        <Seo title="Accounts" />
+        <Pageheader
+          title="Finance"
+          subtitle="Accounts"
+          currentpage="Accounts"
+          activepage="Manage Accounts"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="text-center">Loading...</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
+  }
+
+  if (error) {
+    return (
+      <Fragment>
+        <Seo title="Accounts" />
+        <Pageheader
+          title="Finance"
+          subtitle="Accounts"
+          currentpage="Accounts"
+          activepage="Manage Accounts"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="alert alert-danger">{error}</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
   }
 
   return (
@@ -194,12 +240,7 @@ const AccountsPage: React.FC = () => {
               <div className="card-title">Accounts</div>
             </Card.Header>
             <Card.Body>
-              {error && <div className="alert alert-danger mb-3">{error}</div>}
-
-              {loading ? (
-                <div className="text-center">Loading...</div>
-              ) : (
-                <div className="table-responsive">
+              <div className="table-responsive">
                   <Table className="table-hover">
                     <thead>
                       <tr>
@@ -263,8 +304,7 @@ const AccountsPage: React.FC = () => {
                       )}
                     </tbody>
                   </Table>
-                </div>
-              )}
+              </div>
             </Card.Body>
           </Card>
         </Col>
@@ -278,7 +318,7 @@ const AccountsPage: React.FC = () => {
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            {error && <div className="alert alert-danger">{error}</div>}
+            {formError && <div className="alert alert-danger">{formError}</div>}
 
             <Row>
               <Col md={6}>

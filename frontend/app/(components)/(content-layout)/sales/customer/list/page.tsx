@@ -379,7 +379,7 @@ const CustomerListPage: React.FC = () => {
 
     const loadCustomers = async () => {
       try {
-        const res = await fetch('/api/sales/customers', { cache: 'no-store' })
+        const res = await fetch('/api/v1/sales/customers', { cache: 'no-store' })
         if (!res.ok) return
         const data = await res.json()
         if (isMounted && Array.isArray(data)) {
@@ -527,7 +527,7 @@ const CustomerListPage: React.FC = () => {
         status: addForm.status,
       }
 
-      const res = await fetch('/api/sales/customers', {
+      const res = await fetch('/api/v1/sales/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

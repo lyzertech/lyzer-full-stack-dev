@@ -6,7 +6,15 @@ import SpkDropdown from '@/shared/@spk-reusable-components/general-reusable/reus
 import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tables'
 import Link from 'next/link'
 import React, { Fragment, useEffect, useMemo, useState } from 'react'
-import { Card, Col, Dropdown, Form, Offcanvas, Pagination, Row } from 'react-bootstrap'
+import {
+  Card,
+  Col,
+  Dropdown,
+  Form,
+  Offcanvas,
+  Pagination,
+  Row,
+} from 'react-bootstrap'
 
 type ProductType = 'Goods' | 'Service' | 'Bundle'
 type StockStatus = 'In Stock' | 'Low Stock' | 'Out of Stock'
@@ -23,6 +31,7 @@ type Product = {
   cost_price: number
   selling_price: number
   stock_qty: number
+  description?: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -69,6 +78,7 @@ const brandOptions = [
   'Alan',
   'Monarch',
   'EMH',
+  'Dold',
   'Leipole',
 ]
 
@@ -80,6 +90,7 @@ const BRAND_PREFIX: Record<string, string> = {
   Alan: 'Alan',
   Monarch: 'Mon',
   EMH: 'Emh',
+  Dold: 'Dold',
   Leipole: 'Lei',
 }
 
@@ -120,7 +131,7 @@ const ProductsPage: React.FC = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/sales/products', { cache: 'no-store' })
+      const res = await fetch('/api/v1/sales/products', { cache: 'no-store' })
       if (!res.ok) return
       const data = await res.json()
       if (Array.isArray(data)) setProducts(data as Product[])
@@ -203,7 +214,7 @@ const ProductsPage: React.FC = () => {
         is_active: form.is_active,
       }
 
-      const res = await fetch('/api/sales/products', {
+      const res = await fetch('/api/v1/sales/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -237,7 +248,8 @@ const ProductsPage: React.FC = () => {
         <div>
           <h1 className="page-title fw-medium fs-20 mb-0">Product Catalog</h1>
           <div className="text-muted fs-12 mt-1">
-            Sample UI for sales product master data with stock, selling price, and details panel.
+            Sample UI for sales product master data with stock, selling price,
+            and details panel.
           </div>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -328,7 +340,9 @@ const ProductsPage: React.FC = () => {
               <div className="d-flex align-items-center justify-content-between">
                 <div>
                   <div className="text-muted fs-12">Total Stock Units</div>
-                  <div className="fs-18 fw-semibold">{kpis.totalStockUnits}</div>
+                  <div className="fs-18 fw-semibold">
+                    {kpis.totalStockUnits}
+                  </div>
                 </div>
                 <span className="avatar avatar-md bg-info-transparent">
                   <i className="ri-wallet-3-line fs-18"></i>
@@ -392,10 +406,16 @@ const ProductsPage: React.FC = () => {
                   <tr key={p.sku}>
                     <td style={{ maxWidth: 280 }}>
                       <div className="lh-1">
-                        <div className="fw-semibold text-truncate" style={{ maxWidth: 280 }}>
+                        <div
+                          className="fw-semibold text-truncate"
+                          style={{ maxWidth: 280 }}
+                        >
                           {p.name}
                         </div>
-                        <div className="text-muted fs-12 text-truncate" style={{ maxWidth: 280 }}>
+                        <div
+                          className="text-muted fs-12 text-truncate"
+                          style={{ maxWidth: 280 }}
+                        >
                           {p.sku} • {p.brand} • {p.model}
                         </div>
                       </div>
@@ -403,7 +423,9 @@ const ProductsPage: React.FC = () => {
                     <td>
                       <div className="lh-1">
                         <div className="fw-semibold">
-                          {p.type === 'Service' ? 'N/A' : `${p.stock_qty} ${p.unit}`}
+                          {p.type === 'Service'
+                            ? 'N/A'
+                            : `${p.stock_qty} ${p.unit}`}
                         </div>
                         <SpkBadge
                           variant=""
@@ -414,7 +436,9 @@ const ProductsPage: React.FC = () => {
                       </div>
                     </td>
                     <td>
-                      <div className="fw-medium">{currency.format(p.selling_price)}</div>
+                      <div className="fw-medium">
+                        {currency.format(p.selling_price)}
+                      </div>
                     </td>
                     <td>
                       <SpkBadge
@@ -437,7 +461,11 @@ const ProductsPage: React.FC = () => {
                         <Dropdown.Item as="li" href="#!">
                           <i className="ri-pencil-line me-2"></i>Edit
                         </Dropdown.Item>
-                        <Dropdown.Item as="li" href="#!" className="text-danger">
+                        <Dropdown.Item
+                          as="li"
+                          href="#!"
+                          className="text-danger"
+                        >
                           <i className="ri-delete-bin-line me-2"></i>Archive
                         </Dropdown.Item>
                       </SpkDropdown>
@@ -454,21 +482,30 @@ const ProductsPage: React.FC = () => {
             <div>
               Showing{' '}
               <span className="fw-semibold">
-                {filtered.length === 0 ? 0 : pageStart + 1}-{Math.min(pageEnd, filtered.length)}
+                {filtered.length === 0 ? 0 : pageStart + 1}-
+                {Math.min(pageEnd, filtered.length)}
               </span>{' '}
-              of <span className="fw-semibold">{filtered.length}</span> filtered from{' '}
-              <span className="fw-semibold">{products.length}</span>
+              of <span className="fw-semibold">{filtered.length}</span> filtered
+              from <span className="fw-semibold">{products.length}</span>
             </div>
             <div className="ms-auto">
-              <nav aria-label="Product pagination" className="pagination-style-2">
+              <nav
+                aria-label="Product pagination"
+                className="pagination-style-2"
+              >
                 <Pagination className="mb-0 flex-wrap">
                   <Pagination.Prev
                     disabled={currentPage === 1 || filtered.length === 0}
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                   >
                     Prev
                   </Pagination.Prev>
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                  {Array.from(
+                    { length: totalPages },
+                    (_, index) => index + 1,
+                  ).map((page) => (
                     <Pagination.Item
                       key={page}
                       active={page === currentPage}
@@ -478,8 +515,12 @@ const ProductsPage: React.FC = () => {
                     </Pagination.Item>
                   ))}
                   <Pagination.Next
-                    disabled={currentPage === totalPages || filtered.length === 0}
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={
+                      currentPage === totalPages || filtered.length === 0
+                    }
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                   >
                     Next
                   </Pagination.Next>
@@ -490,7 +531,11 @@ const ProductsPage: React.FC = () => {
         </div>
       </Card>
 
-      <Offcanvas placement="end" show={!!selected} onHide={() => setSelected(null)}>
+      <Offcanvas
+        placement="end"
+        show={!!selected}
+        onHide={() => setSelected(null)}
+      >
         <Offcanvas.Header closeButton>
           <Offcanvas.Title>Product Details</Offcanvas.Title>
         </Offcanvas.Header>
@@ -537,15 +582,28 @@ const ProductsPage: React.FC = () => {
 
               <Card className="custom-card mb-0">
                 <Card.Body className="p-3">
+                  <div className="text-muted fs-12 mb-1">Description</div>
+                  <div className="fw-medium fs-14" style={{ whiteSpace: 'pre-wrap' }}>
+                    {selected.description || <span className="text-muted fs-12 fst-italic">No description available.</span>}
+                  </div>
+                </Card.Body>
+              </Card>
+
+              <Card className="custom-card mb-0">
+                <Card.Body className="p-3">
                   <div className="d-flex flex-column gap-2">
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">Selling Price</span>
-                      <span className="fw-medium">{currency.format(selected.selling_price)}</span>
+                      <span className="fw-medium">
+                        {currency.format(selected.selling_price)}
+                      </span>
                     </div>
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">Stock Qty</span>
                       <span className="fw-medium">
-                        {selected.type === 'Service' ? 'N/A' : selected.stock_qty}
+                        {selected.type === 'Service'
+                          ? 'N/A'
+                          : selected.stock_qty}
                       </span>
                     </div>
                   </div>
@@ -556,7 +614,10 @@ const ProductsPage: React.FC = () => {
                 <Link href="#!" className="btn btn-primary btn-wave flex-fill">
                   <i className="ri-pencil-line me-2"></i>Edit
                 </Link>
-                <Link href="#!" className="btn btn-outline-light btn-wave flex-fill">
+                <Link
+                  href="#!"
+                  className="btn btn-outline-light btn-wave flex-fill"
+                >
                   <i className="ri-file-copy-line me-2"></i>Duplicate
                 </Link>
               </div>
@@ -565,19 +626,28 @@ const ProductsPage: React.FC = () => {
         </Offcanvas.Body>
       </Offcanvas>
 
-      <Offcanvas placement="end" show={showAddForm} onHide={() => setShowAddForm(false)}>
+      <Offcanvas
+        placement="end"
+        show={showAddForm}
+        onHide={() => setShowAddForm(false)}
+      >
         <Offcanvas.Header closeButton>
           <Offcanvas.Title>Add Product</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body>
-          <Form onSubmit={submitAddProduct} className="d-flex flex-column gap-3">
+          <Form
+            onSubmit={submitAddProduct}
+            className="d-flex flex-column gap-3"
+          >
             <Row className="g-2">
               <Col md={12}>
                 <Form.Label>Code *</Form.Label>
                 <Form.Control
                   required
                   value={form.code}
-                  onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, code: e.target.value }))
+                  }
                 />
               </Col>
               <Col md={12}>
@@ -585,7 +655,9 @@ const ProductsPage: React.FC = () => {
                 <Form.Control
                   required
                   value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, name: e.target.value }))
+                  }
                 />
               </Col>
               <Col md={6}>
@@ -610,7 +682,9 @@ const ProductsPage: React.FC = () => {
                 <Form.Label>Model</Form.Label>
                 <Form.Control
                   value={form.model}
-                  onChange={(e) => setForm((p) => ({ ...p, model: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, model: e.target.value }))
+                  }
                 />
               </Col>
               <Col md={6}>
@@ -618,7 +692,10 @@ const ProductsPage: React.FC = () => {
                 <Form.Select
                   value={form.type}
                   onChange={(e) =>
-                    setForm((p) => ({ ...p, type: e.target.value as ProductType }))
+                    setForm((p) => ({
+                      ...p,
+                      type: e.target.value as ProductType,
+                    }))
                   }
                 >
                   <option value="Goods">Goods</option>
@@ -630,7 +707,9 @@ const ProductsPage: React.FC = () => {
                 <Form.Label>Unit</Form.Label>
                 <Form.Control
                   value={form.unit}
-                  onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, unit: e.target.value }))
+                  }
                 />
               </Col>
               <Col md={6}>
@@ -651,14 +730,16 @@ const ProductsPage: React.FC = () => {
                   type="number"
                   min={0}
                   value={form.stock_qty}
-                  onChange={(e) => setForm((p) => ({ ...p, stock_qty: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, stock_qty: e.target.value }))
+                  }
                 />
               </Col>
               <Col md={12}>
                 <Form.Label>Description</Form.Label>
                 <Form.Control
                   as="textarea"
-                  rows={3}
+                  rows={5}
                   value={form.description}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, description: e.target.value }))
@@ -678,7 +759,9 @@ const ProductsPage: React.FC = () => {
               </Col>
             </Row>
 
-            {formError ? <div className="text-danger fs-12">{formError}</div> : null}
+            {formError ? (
+              <div className="text-danger fs-12">{formError}</div>
+            ) : null}
 
             <div className="d-flex gap-2">
               <SpkButton

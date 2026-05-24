@@ -5,15 +5,14 @@ import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Button, Card, Col, Row, Modal, Form, Table } from 'react-bootstrap'
 import {
-  getTransactions,
   createTransaction,
   transferBetweenAccounts,
+  type Transaction,
 } from '@/app/actions/finance/transactions.actions'
-import { getAccounts } from '@/app/actions/finance/accounts.actions'
-import { getCategories } from '@/app/actions/finance/categories.actions'
-import type { TransactionWithDetails } from '@/lib/finance/repositories/transactions.repository'
-import type { AccountWithBank } from '@/lib/finance/repositories/accounts.repository'
-import type { Category } from '@/lib/finance/repositories/categories.repository'
+import type { Account } from '@/app/actions/finance/accounts.actions'
+import type { Category } from '@/app/actions/finance/categories.actions'
+import { getFinanceReference } from '@/app/actions/finance/reference.actions'
+import { useAuth } from '@/shared/auth/AuthContext'
 
 const formatCurrencyWithSpaces = (amount: unknown): string => {
   const num =
@@ -33,11 +32,13 @@ const formatCurrencyWithSpaces = (amount: unknown): string => {
 }
 
 const TransactionsPage: React.FC = () => {
-  const [transactions, setTransactions] = useState<TransactionWithDetails[]>([])
-  const [accounts, setAccounts] = useState<AccountWithBank[]>([])
+  const { isAuthenticated, loading: authLoading } = useAuth()
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [transactionType, setTransactionType] = useState<
     'Income' | 'Expense' | 'Transfer'
@@ -57,27 +58,25 @@ const TransactionsPage: React.FC = () => {
   })
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return
     loadData()
-  }, [])
+  }, [authLoading, isAuthenticated])
 
   async function loadData() {
     setLoading(true)
     setError(null)
     try {
-      const [transactionsData, accountsData, categoriesData] = await Promise.all([
-        getTransactions({ limit: 100 }),
-        getAccounts(),
-        getCategories(),
-      ])
-      setTransactions(transactionsData || [])
-      setAccounts(accountsData || [])
-      setCategories(categoriesData || [])
+      const {
+        accounts: accountsData,
+        categories: categoriesData,
+        transactions: txData = [],
+      } = await getFinanceReference({ transactionsLimit: 100 })
+      setTransactions(txData)
+      setAccounts(accountsData)
+      setCategories(categoriesData)
     } catch (err: any) {
-      console.error('Error loading data:', err)
-      const errorMsg = err?.message || 'Failed to load data'
-      setError(
-        `Failed to fetch transactions: ${errorMsg}. Please ensure the database tables are created.`
-      )
+      console.error('Error loading transactions:', err)
+      setError(err.message || 'Failed to load transactions')
     } finally {
       setLoading(false)
     }
@@ -100,7 +99,7 @@ const TransactionsPage: React.FC = () => {
 
   const handleCloseModal = () => {
     setShowModal(false)
-    setError(null)
+    setFormError(null)
   }
 
   const handleChange = (e: any) => {
@@ -114,7 +113,7 @@ const TransactionsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    setError(null)
+    setFormError(null)
     try {
       if (transactionType === 'Transfer') {
         await transferBetweenAccounts(
@@ -140,7 +139,7 @@ const TransactionsPage: React.FC = () => {
       loadData()
     } catch (err: any) {
       console.error(err)
-      setError(err.message || 'Failed to create transaction')
+      setFormError(err.message || 'Failed to create transaction')
     } finally {
       setSubmitting(false)
     }
@@ -171,6 +170,52 @@ const TransactionsPage: React.FC = () => {
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setItemsPerPage(Number(e.target.value))
     setCurrentPage(1) // Reset to first page when changing items per page
+  }
+
+  if (loading) {
+    return (
+      <Fragment>
+        <Seo title="Transactions" />
+        <Pageheader
+          title="Finance"
+          subtitle="Transactions"
+          currentpage="Transactions"
+          activepage="Manage Transactions"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="text-center">Loading...</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
+  }
+
+  if (error) {
+    return (
+      <Fragment>
+        <Seo title="Transactions" />
+        <Pageheader
+          title="Finance"
+          subtitle="Transactions"
+          currentpage="Transactions"
+          activepage="Manage Transactions"
+        />
+        <Row>
+          <Col xl={12}>
+            <Card className="custom-card">
+              <Card.Body>
+                <div className="alert alert-danger">{error}</div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Fragment>
+    )
   }
 
   return (
@@ -218,12 +263,7 @@ const TransactionsPage: React.FC = () => {
               <div className="card-title">Transactions</div>
             </Card.Header>
             <Card.Body>
-              {error && <div className="alert alert-danger mb-3">{error}</div>}
-
-              {loading ? (
-                <div className="text-center">Loading...</div>
-              ) : (
-                <div className="table-responsive">
+              <div className="table-responsive">
                   <Table className="table-hover">
                     <thead>
                       <tr>
@@ -285,11 +325,10 @@ const TransactionsPage: React.FC = () => {
                       )}
                     </tbody>
                   </Table>
-                </div>
-              )}
+              </div>
 
               {/* Pagination Controls */}
-              {!loading && transactions.length > 0 && (
+              {transactions.length > 0 && (
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <div className="d-flex align-items-center gap-3">
                     <div className="text-muted">
@@ -364,7 +403,7 @@ const TransactionsPage: React.FC = () => {
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            {error && <div className="alert alert-danger">{error}</div>}
+            {formError && <div className="alert alert-danger">{formError}</div>}
 
             <Row>
               <Col md={transactionType === 'Transfer' ? 6 : 12}>

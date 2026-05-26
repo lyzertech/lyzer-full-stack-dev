@@ -22,6 +22,7 @@ import {
   Table,
 } from 'react-bootstrap'
 import { apiClient } from '@/lib/api-client'
+import { useAuth } from '@/shared/auth/AuthContext'
 
 /** Mirrors auth_roles + aggregate counts from the API (see backend migration auth_roles). */
 type UsersByRoleRow = {
@@ -127,6 +128,12 @@ function mapRecentUserRows(rows: unknown[]): RecentUserRow[] {
 }
 
 const UserDashboard: React.FC = () => {
+  const { user } = useAuth()
+  const normalizedRole = String(user?.role || '').toLowerCase()
+  const isSuperAdmin = normalizedRole === 'superadmin'
+  const isMonitoringUser =
+    normalizedRole === 'monitoring' || normalizedRole.includes('monitoring')
+
   const [usersByRole, setUsersByRole] = useState<UsersByRoleRow[]>([])
   const [loadingRoles, setLoadingRoles] = useState(true)
   const [rolesError, setRolesError] = useState<string | null>(null)
@@ -191,20 +198,39 @@ const UserDashboard: React.FC = () => {
     void reloadDashboard()
   }, [reloadDashboard])
 
+  const assignableRoles = useMemo(() => {
+    if (!isMonitoringUser) return usersByRole
+    return usersByRole.filter(
+      (role) =>
+        role.name.toLowerCase().includes('monitoring') ||
+        role.slug.toLowerCase().includes('monitoring'),
+    )
+  }, [usersByRole, isMonitoringUser])
+
   const activeUsers = useMemo(
-    () => usersByRole.reduce((acc, item) => acc + item.active, 0),
-    [usersByRole],
+    () => assignableRoles.reduce((acc, item) => acc + item.active, 0),
+    [assignableRoles],
   )
   const totalUsers = useMemo(
-    () => usersByRole.reduce((acc, item) => acc + item.total, 0),
-    [usersByRole],
+    () => assignableRoles.reduce((acc, item) => acc + item.total, 0),
+    [assignableRoles],
   )
   const pendingUsers = useMemo(
-    () => usersByRole.reduce((acc, item) => acc + item.pending, 0),
-    [usersByRole],
+    () => assignableRoles.reduce((acc, item) => acc + item.pending, 0),
+    [assignableRoles],
   )
 
+  const visibleRecentUsers = useMemo(() => {
+    if (!isMonitoringUser) return recentUsers
+    return recentUsers.filter(
+      (row) =>
+        row.role != null &&
+        row.role.toLowerCase().includes('monitoring'),
+    )
+  }, [recentUsers, isMonitoringUser])
+
   const openAddUserModal = () => {
+    if (!isSuperAdmin) return
     setAddUserForm(defaultAddUserForm())
     setAddUserError(null)
     setShowAddUserModal(true)
@@ -227,6 +253,7 @@ const UserDashboard: React.FC = () => {
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isSuperAdmin) return
     setAddUserSubmitting(true)
     setAddUserError(null)
     try {
@@ -296,6 +323,7 @@ const UserDashboard: React.FC = () => {
         activepage="User Dashboard"
       />
 
+      {isSuperAdmin ? (
       <Modal
         show={showAddUserModal}
         onHide={closeAddUserModal}
@@ -415,7 +443,7 @@ const UserDashboard: React.FC = () => {
                     disabled={addUserSubmitting || loadingRoles}
                   >
                     <option value="">No role</option>
-                    {usersByRole.map((r) => (
+                    {assignableRoles.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name}
                       </option>
@@ -451,6 +479,7 @@ const UserDashboard: React.FC = () => {
           </Modal.Footer>
         </Form>
       </Modal>
+      ) : null}
 
       <Row className="g-3">
         <Col xl={4} md={6}>
@@ -561,7 +590,7 @@ const UserDashboard: React.FC = () => {
                             Loading roles…
                           </td>
                         </tr>
-                      ) : usersByRole.length === 0 ? (
+                      ) : assignableRoles.length === 0 ? (
                         <tr>
                           <td
                             colSpan={6}
@@ -571,7 +600,7 @@ const UserDashboard: React.FC = () => {
                           </td>
                         </tr>
                       ) : (
-                        usersByRole.map((item) => (
+                        assignableRoles.map((item) => (
                           <tr key={item.id}>
                             <td className="fw-medium">
                               <div>{item.name}</div>
@@ -615,16 +644,18 @@ const UserDashboard: React.FC = () => {
           <Card className="custom-card">
             <Card.Header className="justify-content-between">
               <div className="card-title">Recent Users</div>
-              <Button
-                variant="secondary-light"
-                size="sm"
-                className="btn-wave"
-                type="button"
-                onClick={openAddUserModal}
-              >
-                <i className="ri-add-line me-1" />
-                Add User
-              </Button>
+              {isSuperAdmin ? (
+                <Button
+                  variant="secondary-light"
+                  size="sm"
+                  className="btn-wave"
+                  type="button"
+                  onClick={openAddUserModal}
+                >
+                  <i className="ri-add-line me-1" />
+                  Add User
+                </Button>
+              ) : null}
             </Card.Header>
             <Card.Body>
               {recentError ? (
@@ -653,7 +684,7 @@ const UserDashboard: React.FC = () => {
                             Loading users…
                           </td>
                         </tr>
-                      ) : recentUsers.length === 0 ? (
+                      ) : visibleRecentUsers.length === 0 ? (
                         <tr>
                           <td
                             colSpan={3}
@@ -663,7 +694,7 @@ const UserDashboard: React.FC = () => {
                           </td>
                         </tr>
                       ) : (
-                        recentUsers.map((user) => (
+                        visibleRecentUsers.map((user) => (
                           <tr key={user.id}>
                             <td>
                               <p className="mb-0 fw-medium">{user.name}</p>

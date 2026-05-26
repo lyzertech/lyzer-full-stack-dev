@@ -11,6 +11,25 @@ use Illuminate\Validation\Rule;
 
 class UserDashboardController extends Controller
 {
+    private function activeRoleSlugForUser(int $userId): string
+    {
+        $roleRecord = DB::table('auth_user_roles')
+            ->join('auth_roles', 'auth_user_roles.role_id', '=', 'auth_roles.id')
+            ->where('auth_user_roles.user_id', $userId)
+            ->where('auth_user_roles.is_active', 1)
+            ->select('auth_roles.slug')
+            ->first();
+
+        return $roleRecord ? (string) $roleRecord->slug : 'user';
+    }
+
+    private function isMonitoringRoleSlug(string $roleSlug): bool
+    {
+        $normalized = strtolower($roleSlug);
+
+        return $normalized === 'monitoring' || str_contains($normalized, 'monitoring');
+    }
+
     /**
      * Active roles from auth_roles with user counts from auth_user_roles + auth_users.
      *
@@ -18,7 +37,7 @@ class UserDashboardController extends Controller
      */
     public function usersByRole(Request $request): JsonResponse
     {
-        $rows = DB::table('auth_roles')
+        $query = DB::table('auth_roles')
             ->leftJoin('auth_user_roles', function ($join) {
                 $join->on('auth_roles.id', '=', 'auth_user_roles.role_id')
                     ->where('auth_user_roles.is_active', 1);
@@ -51,8 +70,17 @@ class UserDashboardController extends Controller
             )
             ->selectRaw(
                 "COALESCE(SUM(CASE WHEN auth_users.status = 'PendingVerification' THEN 1 ELSE 0 END), 0) as pending"
-            )
-            ->get()
+            );
+
+        $user = $request->user();
+        if ($user && $this->isMonitoringRoleSlug($this->activeRoleSlugForUser((int) $user->id))) {
+            $query->where(function ($q) {
+                $q->where('auth_roles.slug', 'like', '%monitoring%')
+                    ->orWhere('auth_roles.name', 'like', '%monitoring%');
+            });
+        }
+
+        $rows = $query->get()
             ->map(function ($row) {
                 $row->is_system = (bool) $row->is_system;
                 $row->is_active = (bool) $row->is_active;
@@ -73,8 +101,26 @@ class UserDashboardController extends Controller
      */
     public function recentUsers(Request $request): JsonResponse
     {
-        $rows = DB::table('auth_users')
-            ->whereNull('deleted_at')
+        $query = DB::table('auth_users')
+            ->whereNull('deleted_at');
+
+        $user = $request->user();
+        if ($user && $this->isMonitoringRoleSlug($this->activeRoleSlugForUser((int) $user->id))) {
+            $query->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('auth_user_roles as aur')
+                    ->join('auth_roles as ar', 'ar.id', '=', 'aur.role_id')
+                    ->whereColumn('aur.user_id', 'auth_users.id')
+                    ->where('aur.is_active', 1)
+                    ->where('ar.is_active', 1)
+                    ->where(function ($roleQuery) {
+                        $roleQuery->where('ar.slug', 'like', '%monitoring%')
+                            ->orWhere('ar.name', 'like', '%monitoring%');
+                    });
+            });
+        }
+
+        $rows = $query
             ->orderByDesc('auth_users.created_at')
             ->limit(10)
             ->select([
@@ -117,6 +163,13 @@ class UserDashboardController extends Controller
      */
     public function storeUser(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (! $user || $this->activeRoleSlugForUser((int) $user->id) !== 'superadmin') {
+            return response()->json([
+                'message' => 'Forbidden. Only superadmin can create users.',
+            ], 403);
+        }
+
         $statuses = ['Active', 'Inactive', 'Suspended', 'Banned', 'PendingVerification'];
 
         $validated = $request->validate([
@@ -182,6 +235,13 @@ class UserDashboardController extends Controller
      */
     public function storeRole(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (! $user || $this->activeRoleSlugForUser((int) $user->id) !== 'superadmin') {
+            return response()->json([
+                'message' => 'Forbidden. Only superadmin can create roles.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'slug' => ['required', 'string', 'max:100', 'unique:auth_roles,slug'],

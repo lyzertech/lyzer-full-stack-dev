@@ -5,6 +5,7 @@ import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Alert, Button, Card, Col, Form, Row, Spinner, Table, Modal } from 'react-bootstrap'
 import { apiClient } from '@/lib/api-client'
+import { useAuth } from '@/shared/auth/AuthContext'
 
 type UsersByRoleRow = {
   id: number
@@ -36,6 +37,10 @@ function mapUsersByRoleRows(rows: unknown[]): UsersByRoleRow[] {
 }
 
 const RolePage: React.FC = () => {
+  const { user } = useAuth()
+  const isSuperAdmin = String(user?.role || '').toLowerCase() === 'superadmin'
+  const tableColSpan = isSuperAdmin ? 5 : 4
+
   const [roles, setRoles] = useState<UsersByRoleRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -80,6 +85,7 @@ const RolePage: React.FC = () => {
   }, [keyword, roles])
 
   const openAddRoleModal = () => {
+    if (!isSuperAdmin) return
     setAddRoleForm({ name: '', slug: '', description: '', is_system: false })
     setAddRoleError(null)
     setShowAddRoleModal(true)
@@ -109,6 +115,7 @@ const RolePage: React.FC = () => {
 
   const handleAddRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isSuperAdmin) return
     setAddRoleSubmitting(true)
     setAddRoleError(null)
     try {
@@ -161,6 +168,7 @@ const RolePage: React.FC = () => {
         activepage="Role Management"
       />
 
+      {isSuperAdmin ? (
       <Modal
         show={showAddRoleModal}
         onHide={closeAddRoleModal}
@@ -252,6 +260,7 @@ const RolePage: React.FC = () => {
           </Modal.Footer>
         </Form>
       </Modal>
+      ) : null}
 
       <Row className="g-3">
         <Col xl={12}>
@@ -266,14 +275,16 @@ const RolePage: React.FC = () => {
                   placeholder="Search role..."
                   className="form-control-sm"
                 />
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="btn-wave"
-                  onClick={openAddRoleModal}
-                >
-                  <i className="ri-add-line me-1" /> New Role
-                </Button>
+                {isSuperAdmin ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="btn-wave"
+                    onClick={openAddRoleModal}
+                  >
+                    <i className="ri-add-line me-1" /> New Role
+                  </Button>
+                ) : null}
               </div>
             </Card.Header>
             <Card.Body>
@@ -290,20 +301,20 @@ const RolePage: React.FC = () => {
                       <th className="text-end">Users</th>
                       <th className="text-end">Permissions</th>
                       <th>Status</th>
-                      <th className="text-end">Action</th>
+                      {isSuperAdmin ? <th className="text-end">Action</th> : null}
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-4">
+                        <td colSpan={tableColSpan} className="text-center py-4">
                           <Spinner animation="border" size="sm" className="me-2" />
                           Loading roles...
                         </td>
                       </tr>
                     ) : filteredRoles.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center text-muted">
+                        <td colSpan={tableColSpan} className="text-center text-muted">
                           No roles found
                         </td>
                       </tr>
@@ -326,22 +337,24 @@ const RolePage: React.FC = () => {
                               <span className="badge bg-info">Custom</span>
                             )}
                           </td>
-                          <td className="text-end">
-                            <Button
-                              variant="light"
-                              size="sm"
-                              className="btn-wave me-2"
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="danger-light"
-                              size="sm"
-                              className="btn-wave"
-                            >
-                              Delete
-                            </Button>
-                          </td>
+                          {isSuperAdmin ? (
+                            <td className="text-end">
+                              <Button
+                                variant="light"
+                                size="sm"
+                                className="btn-wave me-2"
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="danger-light"
+                                size="sm"
+                                className="btn-wave"
+                              >
+                                Delete
+                              </Button>
+                            </td>
+                          ) : null}
                         </tr>
                       ))
                     )}

@@ -18,8 +18,13 @@ import {
   Pagination,
 } from 'react-bootstrap'
 import Link from 'next/link'
+import { useAuth } from '@/shared/auth/AuthContext'
+import { canCreateMonitoringInstallation } from '@/shared/monitoring/roleAccess'
 
 const OrganizationPage = () => {
+  const { user } = useAuth()
+  const canCreate = canCreateMonitoringInstallation(user?.role)
+
   const [showAddModal, setShowAddModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedOrg, setSelectedOrg] = useState<any | null>(null)
@@ -112,6 +117,7 @@ const OrganizationPage = () => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canCreate) return
     try {
       await apiClient.post('/monitoring/organizations', formData)
       alert('Organization created successfully!')
@@ -170,7 +176,7 @@ const OrganizationPage = () => {
                   <p className="mb-1 opacity-70 text-fixed-white">Global Facilities</p>
                   <h4 className="fw-semibold mb-0 text-fixed-white">
                     {organizations.reduce(
-                      (acc, org) => acc + (org.facilities_count || 0),
+                      (acc, org) => acc + Number(org.facilities_count || 0),
                       0,
                     )}
                   </h4>
@@ -190,7 +196,10 @@ const OrganizationPage = () => {
                   <p className="mb-1 opacity-70 text-fixed-white">Total Devices</p>
                   <h4 className="fw-semibold mb-0 text-fixed-white">
                     {organizations
-                      .reduce((acc, org) => acc + (org.devices_count || 0), 0)
+                      .reduce(
+                        (acc, org) => acc + Number(org.devices_count || 0),
+                        0,
+                      )
                       .toLocaleString()}
                   </h4>
                 </div>
@@ -236,14 +245,16 @@ const OrganizationPage = () => {
                 <i className="bi bi-search"></i>
               </Button>
             </InputGroup>
-            <Button
-              variant="primary"
-              size="sm"
-              className="shadow-sm text-nowrap"
-              onClick={() => setShowAddModal(true)}
-            >
-              <i className="bi bi-plus-lg me-1"></i> New Organization
-            </Button>
+            {canCreate ? (
+              <Button
+                variant="primary"
+                size="sm"
+                className="shadow-sm text-nowrap"
+                onClick={() => setShowAddModal(true)}
+              >
+                <i className="bi bi-plus-lg me-1"></i> New Organization
+              </Button>
+            ) : null}
           </div>
         </Card.Header>
         <Card.Body>
@@ -308,7 +319,8 @@ const OrganizationPage = () => {
                             {org.facilities_count} Facilities
                           </span>
                           <span className="fs-11 text-muted">
-                            {(org.devices_count || 0).toLocaleString()} Devices
+                            {Number(org.devices_count || 0).toLocaleString()}{' '}
+                            Devices
                           </span>
                         </div>
                       </td>
@@ -339,39 +351,41 @@ const OrganizationPage = () => {
                           >
                             <i className="bi bi-eye"></i>
                           </Button>
-                          <Dropdown>
-                            <Dropdown.Toggle
-                              variant="light"
-                              size="sm"
-                              className="btn-icon no-caret rounded-pill shadow-sm"
-                            >
-                              <i className="bi bi-three-dots"></i>
-                            </Dropdown.Toggle>
-                            <Dropdown.Menu
-                              align="end"
-                              className="shadow-lg border-0"
-                            >
-                              <Link
-                                href={`/monitoring/installation/facility?org_id=${org.id}&org_name=${encodeURIComponent(org.name)}`}
-                                className="dropdown-item"
+                          {canCreate ? (
+                            <Dropdown>
+                              <Dropdown.Toggle
+                                variant="light"
+                                size="sm"
+                                className="btn-icon no-caret rounded-pill shadow-sm"
                               >
-                                <i className="bi bi-geo-alt me-2 text-primary"></i>{' '}
-                                Manage Facilities
-                              </Link>
-                              <Dropdown.Item href="#">
-                                <i className="bi bi-pencil me-2 text-info"></i>{' '}
-                                Edit Details
-                              </Dropdown.Item>
-                              <Dropdown.Divider />
-                              <Dropdown.Item
-                                href="#"
-                                className="text-danger"
-                                onClick={() => handleDelete(org.id)}
+                                <i className="bi bi-three-dots"></i>
+                              </Dropdown.Toggle>
+                              <Dropdown.Menu
+                                align="end"
+                                className="shadow-lg border-0"
                               >
-                                <i className="bi bi-trash me-2"></i> Delete
-                              </Dropdown.Item>
-                            </Dropdown.Menu>
-                          </Dropdown>
+                                <Link
+                                  href={`/monitoring/installation/facility?org_id=${org.id}&org_name=${encodeURIComponent(org.name)}`}
+                                  className="dropdown-item"
+                                >
+                                  <i className="bi bi-geo-alt me-2 text-primary"></i>{' '}
+                                  Manage Facilities
+                                </Link>
+                                <Dropdown.Item href="#">
+                                  <i className="bi bi-pencil me-2 text-info"></i>{' '}
+                                  Edit Details
+                                </Dropdown.Item>
+                                <Dropdown.Divider />
+                                <Dropdown.Item
+                                  href="#"
+                                  className="text-danger"
+                                  onClick={() => handleDelete(org.id)}
+                                >
+                                  <i className="bi bi-trash me-2"></i> Delete
+                                </Dropdown.Item>
+                              </Dropdown.Menu>
+                            </Dropdown>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -425,6 +439,7 @@ const OrganizationPage = () => {
       </Card>
 
       {/* Add Modal */}
+      {canCreate ? (
       <Modal
         show={showAddModal}
         onHide={() => setShowAddModal(false)}
@@ -534,6 +549,7 @@ const OrganizationPage = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      ) : null}
       {/* Detail Modal */}
       <Modal
         show={showDetailModal}
@@ -608,7 +624,9 @@ const OrganizationPage = () => {
                 <Col md={6}>
                   <div className="p-3 rounded-3 bg-light border border-default">
                     <p className="text-muted fs-11 fw-semibold mb-1 text-uppercase">Devices</p>
-                    <span className="fw-bold fs-20 text-success">{(selectedOrg.devices_count || 0).toLocaleString()}</span>
+                    <span className="fw-bold fs-20 text-success">
+                      {Number(selectedOrg.devices_count || 0).toLocaleString()}
+                    </span>
                     <span className="text-muted fs-12 ms-1">devices</span>
                   </div>
                 </Col>

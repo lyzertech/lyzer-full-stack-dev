@@ -3,11 +3,13 @@
 namespace App\Modules\Monitoring\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Monitoring\Concerns\ResolvesAuthRole;
 use App\Modules\Monitoring\Models\Device;
 use Illuminate\Http\Request;
 
 class DeviceController extends Controller
 {
+    use ResolvesAuthRole;
     public function index(Request $request)
     {
         $query = Device::with('facility');
@@ -27,6 +29,10 @@ class DeviceController extends Controller
 
     public function store(Request $request)
     {
+        if ($response = $this->denyIfMonitoringViewOnly($request)) {
+            return $response;
+        }
+
         $validated = $request->validate([
             'facility_id' => 'required|exists:monitoring_facilities,id',
             'name' => 'required|string|max:255',
@@ -64,8 +70,12 @@ class DeviceController extends Controller
         return response()->json($device);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($response = $this->denyIfMonitoringViewOnly($request)) {
+            return $response;
+        }
+
         $device = Device::findOrFail($id);
         $device->delete();
         return response()->json(null, 204);

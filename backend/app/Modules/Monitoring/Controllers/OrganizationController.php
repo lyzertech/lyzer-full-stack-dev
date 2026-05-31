@@ -3,12 +3,14 @@
 namespace App\Modules\Monitoring\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Monitoring\Concerns\ResolvesAuthRole;
 use App\Modules\Monitoring\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class OrganizationController extends Controller
 {
+    use ResolvesAuthRole;
     public function index()
     {
         return response()->json(Organization::withCount(['facilities', 'devices'])->get());
@@ -21,6 +23,10 @@ class OrganizationController extends Controller
 
     public function store(Request $request)
     {
+        if ($response = $this->denyIfMonitoringViewOnly($request)) {
+            return $response;
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:monitoring_organizations',

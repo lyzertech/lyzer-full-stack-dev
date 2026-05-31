@@ -17,15 +17,18 @@ import {
   Modal,
 } from 'react-bootstrap'
 import Link from 'next/link'
+import { useAuth } from '@/shared/auth/AuthContext'
+import { canCreateMonitoringInstallation } from '@/shared/monitoring/roleAccess'
 
 const FacilityPage = () => {
+  const { user } = useAuth()
+  const canCreate = canCreateMonitoringInstallation(user?.role)
+
   const searchParams = useSearchParams()
+  const orgIdFromUrl = searchParams.get('org_id')
 
   const [searchQuery, setSearchQuery] = useState('')
-  // Pre-select org from query param if coming from Organization page
-  const [selectedOrg, setSelectedOrg] = useState(
-    searchParams.get('org_id') ?? '1',
-  )
+  const [selectedOrg, setSelectedOrg] = useState(orgIdFromUrl ?? '')
 
   const [organizations, setOrganizations] = useState<any[]>([])
   const [facilities, setFacilities] = useState<any[]>([])
@@ -34,13 +37,27 @@ const FacilityPage = () => {
   const fetchInitialData = async () => {
     try {
       const response = await apiClient.get('/monitoring/organizations')
-      const orgData = response.data
+      const orgData = Array.isArray(response.data) ? response.data : []
       setOrganizations(orgData)
-      if (orgData.length > 0 && !selectedOrg) {
+
+      if (orgData.length === 0) {
+        setLoading(false)
+        return
+      }
+
+      const urlOrgId = searchParams.get('org_id')
+      const matchedOrg = urlOrgId
+        ? orgData.find((org: { id: number }) => String(org.id) === urlOrgId)
+        : null
+
+      if (matchedOrg) {
+        setSelectedOrg(String(matchedOrg.id))
+      } else {
         setSelectedOrg(String(orgData[0].id))
       }
     } catch (error) {
       console.error('Failed to fetch initial data:', error)
+      setLoading(false)
     }
   }
 
@@ -51,7 +68,7 @@ const FacilityPage = () => {
       const res = await apiClient.get(
         `/monitoring/facilities?organization_id=${selectedOrg}`,
       )
-      setFacilities(res.data)
+      setFacilities(Array.isArray(res.data) ? res.data : [])
     } catch (error) {
       console.error('Failed to fetch facilities:', error)
     } finally {
@@ -91,6 +108,7 @@ const FacilityPage = () => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canCreate) return
     try {
       await apiClient.post('/monitoring/facilities', { ...formData, organization_id: selectedOrg })
       alert('Facility registered successfully!')
@@ -147,7 +165,11 @@ const FacilityPage = () => {
                       className="form-select-sm border-default shadow-none"
                       value={selectedOrg}
                       onChange={(e) => setSelectedOrg(e.target.value)}
+                      disabled={organizations.length === 0}
                     >
+                      {!selectedOrg && (
+                        <option value="">Select organization…</option>
+                      )}
                       {organizations.map((org) => (
                         <option key={org.id} value={org.id}>
                           {org.name}
@@ -177,14 +199,16 @@ const FacilityPage = () => {
                   </div>
                 </div>
                 <div className="d-flex gap-2 mt-auto">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="px-3 shadow-sm"
-                    onClick={() => setShowAddModal(true)}
-                  >
-                    <i className="bi bi-plus-lg me-1"></i> New Facility
-                  </Button>
+                  {canCreate ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="px-3 shadow-sm"
+                      onClick={() => setShowAddModal(true)}
+                    >
+                      <i className="bi bi-plus-lg me-1"></i> New Facility
+                    </Button>
+                  ) : null}
                   <Button variant="outline-light" size="sm" className="px-3">
                     <i className="bi bi-download"></i>
                   </Button>
@@ -306,44 +330,43 @@ const FacilityPage = () => {
                     </Link>
                   </div>
                 </Card.Body>
-                <Card.Footer className="bg-light-transparent border-top-0 py-2 px-4">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="fs-10 text-muted fw-medium">
-                      <i className="bi bi-clock me-1"></i>Sync: 2m ago
-                    </span>
-                    <div className="dropdown">
-                      <Dropdown>
-                        <Dropdown.Toggle
-                          variant="light"
-                          size="sm"
-                          className="btn-icon no-caret border-0 shadow-none bg-transparent rounded-pill"
-                        >
-                          <i className="bi bi-three-dots-vertical"></i>
-                        </Dropdown.Toggle>
-                        <Dropdown.Menu
-                          align="end"
-                          className="shadow-lg border-0"
-                        >
-                          <Dropdown.Item href="#" className="fs-13">
-                            <i className="bi bi-pencil-square me-2 text-info"></i>{' '}
-                            Edit Facility
-                          </Dropdown.Item>
-                          <Dropdown.Item href="#" className="fs-13">
-                            <i className="bi bi-bar-chart-line me-2 text-primary"></i>{' '}
-                            Site Analytics
-                          </Dropdown.Item>
-                          <Dropdown.Divider />
-                          <Dropdown.Item
-                            onClick={() => handleDelete(facility.id)}
-                            className="fs-13 text-danger"
+                {canCreate ? (
+                  <Card.Footer className="bg-light-transparent border-top-0 py-2 px-4">
+                    <div className="d-flex justify-content-end align-items-center">
+                      <div className="dropdown">
+                        <Dropdown>
+                          <Dropdown.Toggle
+                            variant="light"
+                            size="sm"
+                            className="btn-icon no-caret border-0 shadow-none bg-transparent rounded-pill"
                           >
-                            <i className="bi bi-trash3 me-2"></i> Delete Site
-                          </Dropdown.Item>
-                        </Dropdown.Menu>
-                      </Dropdown>
+                            <i className="bi bi-three-dots-vertical"></i>
+                          </Dropdown.Toggle>
+                          <Dropdown.Menu
+                            align="end"
+                            className="shadow-lg border-0"
+                          >
+                            <Dropdown.Item href="#" className="fs-13">
+                              <i className="bi bi-pencil-square me-2 text-info"></i>{' '}
+                              Edit Facility
+                            </Dropdown.Item>
+                            <Dropdown.Item href="#" className="fs-13">
+                              <i className="bi bi-bar-chart-line me-2 text-primary"></i>{' '}
+                              Site Analytics
+                            </Dropdown.Item>
+                            <Dropdown.Divider />
+                            <Dropdown.Item
+                              onClick={() => handleDelete(facility.id)}
+                              className="fs-13 text-danger"
+                            >
+                              <i className="bi bi-trash3 me-2"></i> Delete Site
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      </div>
                     </div>
-                  </div>
-                </Card.Footer>
+                  </Card.Footer>
+                ) : null}
               </Card>
             </Col>
           ))}
@@ -362,7 +385,9 @@ const FacilityPage = () => {
                 size="sm"
                 onClick={() => {
                   setSearchQuery('')
-                  setSelectedOrg('1')
+                  if (organizations.length > 0) {
+                    setSelectedOrg(String(organizations[0].id))
+                  }
                 }}
               >
                 Reset Filters
@@ -371,29 +396,32 @@ const FacilityPage = () => {
           </Col>
         )}
 
-        <Col xxl={3} xl={4} lg={6} md={6} className="mb-4">
-          <Card className="custom-card h-100 border-2 border-dashed d-flex align-items-center justify-content-center bg-light-transparent hover-lift">
-            <div className="text-center p-4">
-              <div className="avatar avatar-xl bg-primary-transparent text-primary avatar-rounded mb-3 mx-auto shadow-sm border border-primary-transparent">
-                <i className="bi bi-plus-lg fs-24"></i>
+        {canCreate ? (
+          <Col xxl={3} xl={4} lg={6} md={6} className="mb-4">
+            <Card className="custom-card h-100 border-2 border-dashed d-flex align-items-center justify-content-center bg-light-transparent hover-lift">
+              <div className="text-center p-4">
+                <div className="avatar avatar-xl bg-primary-transparent text-primary avatar-rounded mb-3 mx-auto shadow-sm border border-primary-transparent">
+                  <i className="bi bi-plus-lg fs-24"></i>
+                </div>
+                <h6 className="fw-bold mb-1 text-dark">Add New Facility</h6>
+                <p className="text-muted fs-12 mb-3">
+                  Expand your monitoring network
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="rounded-pill px-4 shadow-sm"
+                  onClick={() => setShowAddModal(true)}
+                >
+                  Create Facility
+                </Button>
               </div>
-              <h6 className="fw-bold mb-1 text-dark">Add New Facility</h6>
-              <p className="text-muted fs-12 mb-3">
-                Expand your monitoring network
-              </p>
-              <Button
-                variant="primary"
-                size="sm"
-                className="rounded-pill px-4 shadow-sm"
-                onClick={() => setShowAddModal(true)}
-              >
-                Create Facility
-              </Button>
-            </div>
-          </Card>
-        </Col>
+            </Card>
+          </Col>
+        ) : null}
       </Row>
 
+      {canCreate ? (
       <Modal
         show={showAddModal}
         onHide={() => setShowAddModal(false)}
@@ -521,6 +549,7 @@ const FacilityPage = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      ) : null}
     </React.Fragment>
   )
 }

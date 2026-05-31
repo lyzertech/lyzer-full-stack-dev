@@ -506,15 +506,15 @@ export const MENUITEMS_Monitoring: any = [
         title: 'Role',
       },
 
-      {
-        path: '/user/permission',
-        type: 'link',
-        icon: Svgicons.Profilesettingicon,
-        active: false,
-        selected: false,
-        dirchange: false,
-        title: 'Permission',
-      },
+      // {
+      //   path: '/user/permission',
+      //   type: 'link',
+      //   icon: Svgicons.Profilesettingicon,
+      //   active: false,
+      //   selected: false,
+      //   dirchange: false,
+      //   title: 'Permission',
+      // },
     ],
   },
 ]

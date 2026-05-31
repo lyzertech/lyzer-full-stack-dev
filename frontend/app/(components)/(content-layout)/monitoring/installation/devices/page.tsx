@@ -2,7 +2,7 @@
 
 import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api-client'
 import {
@@ -21,21 +21,27 @@ import {
   Modal,
 } from 'react-bootstrap'
 import FacilityEnergyChart from './FacilityEnergyChart'
+import { useAuth } from '@/shared/auth/AuthContext'
+import { canCreateMonitoringInstallation } from '@/shared/monitoring/roleAccess'
 
 const DevicesPage = () => {
+  const { user } = useAuth()
+  const canCreate = canCreateMonitoringInstallation(user?.role)
+
   const router = useRouter()
   const searchParams = useSearchParams()
+  const orgIdFromUrl = searchParams.get('org_id')
+  const preferUrlFacility = useRef(
+    Boolean(searchParams.get('facility_id') || searchParams.get('facility_name')),
+  )
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedOrg, setSelectedOrg] = useState(
-    searchParams.get('org_id') ?? '1',
-  )
-  // Pre-select from query param if present (e.g. coming from Facility page)
+  const [selectedOrg, setSelectedOrg] = useState(orgIdFromUrl ?? '')
   const [selectedFacility, setSelectedFacility] = useState(
-    searchParams.get('facility_name') ?? 'All',
+    searchParams.get('facility_name') ?? '',
   )
   const [preselectedFacilityId, setPreselectedFacilityId] = useState(
-    searchParams.get('facility_id') ?? null,
+    searchParams.get('facility_id'),
   )
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 8
@@ -61,16 +67,68 @@ const DevicesPage = () => {
     errors: string[]
   } | null>(null)
 
+  const applyFacilitySelection = (
+    facilityData: { id: number; name: string }[],
+    useUrlParams: boolean,
+  ) => {
+    if (facilityData.length === 0) {
+      setSelectedFacility('All')
+      setPreselectedFacilityId(null)
+      return
+    }
+
+    if (useUrlParams) {
+      const urlFacilityId = searchParams.get('facility_id')
+      if (urlFacilityId) {
+        const matchedById = facilityData.find(
+          (f) => String(f.id) === urlFacilityId,
+        )
+        if (matchedById) {
+          setSelectedFacility(matchedById.name)
+          setPreselectedFacilityId(urlFacilityId)
+          return
+        }
+      }
+
+      const urlFacilityName = searchParams.get('facility_name')
+      if (urlFacilityName) {
+        const matchedByName = facilityData.find((f) => f.name === urlFacilityName)
+        if (matchedByName) {
+          setSelectedFacility(matchedByName.name)
+          setPreselectedFacilityId(String(matchedByName.id))
+          return
+        }
+      }
+    }
+
+    setSelectedFacility(facilityData[0].name)
+    setPreselectedFacilityId(String(facilityData[0].id))
+  }
+
   const fetchInitialData = async () => {
     try {
       const orgRes = await apiClient.get('/monitoring/organizations')
-      const orgData = orgRes.data
+      const orgData = Array.isArray(orgRes.data) ? orgRes.data : []
       setOrganizations(orgData)
-      if (orgData.length > 0 && !selectedOrg) {
+
+      if (orgData.length === 0) {
+        setLoading(false)
+        return
+      }
+
+      const urlOrgId = searchParams.get('org_id')
+      const matchedOrg = urlOrgId
+        ? orgData.find((org: { id: number }) => String(org.id) === urlOrgId)
+        : null
+
+      if (matchedOrg) {
+        setSelectedOrg(String(matchedOrg.id))
+      } else {
         setSelectedOrg(String(orgData[0].id))
       }
     } catch (error) {
       console.error('Failed to fetch organizations:', error)
+      setLoading(false)
     }
   }
 
@@ -80,7 +138,13 @@ const DevicesPage = () => {
       const res = await apiClient.get(
         `/monitoring/facilities?organization_id=${selectedOrg}`,
       )
-      setFacilities(res.data)
+      const facilityData = Array.isArray(res.data) ? res.data : []
+      setFacilities(facilityData)
+      applyFacilitySelection(
+        facilityData,
+        preferUrlFacility.current,
+      )
+      preferUrlFacility.current = false
     } catch (error) {
       console.error('Failed to fetch facilities:', error)
     }
@@ -88,6 +152,13 @@ const DevicesPage = () => {
 
   const fetchDevices = async () => {
     if (!selectedOrg) return
+    if (
+      facilities.length > 0 &&
+      !selectedFacility &&
+      !preselectedFacilityId
+    ) {
+      return
+    }
     setLoading(true)
     try {
       let url = `/monitoring/devices?organization_id=${selectedOrg}`
@@ -99,7 +170,7 @@ const DevicesPage = () => {
         if (fac) url += `&facility_id=${fac.id}`
       }
       const res = await apiClient.get(url)
-      setDevices(res.data)
+      setDevices(Array.isArray(res.data) ? res.data : [])
     } catch (error) {
       console.error('Failed to fetch devices:', error)
     } finally {
@@ -114,9 +185,14 @@ const DevicesPage = () => {
   useEffect(() => {
     if (selectedOrg) {
       fetchFacilities()
+    }
+  }, [selectedOrg])
+
+  useEffect(() => {
+    if (selectedOrg) {
       fetchDevices()
     }
-  }, [selectedOrg, selectedFacility])
+  }, [selectedOrg, selectedFacility, preselectedFacilityId, facilities])
 
   // When the facility dropdown is changed manually, clear the preselected id
   const handleFacilityChange = (value: string) => {
@@ -227,6 +303,7 @@ const DevicesPage = () => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canCreate) return
     try {
       await apiClient.post('/monitoring/devices', formData)
       alert('Device registered successfully!')
@@ -243,6 +320,7 @@ const DevicesPage = () => {
   }
 
   const handleDelete = async (id: number) => {
+    if (!canCreate) return
     if (window.confirm('Are you sure you want to delete this device?')) {
       try {
         await apiClient.delete(`/monitoring/devices/${id}`)
@@ -272,6 +350,7 @@ const DevicesPage = () => {
   }
 
   const handleUseScannedDevice = (item: any) => {
+    if (!canCreate) return
     setFormData((prev: any) => ({
       ...prev,
       name: item.device_name || '',
@@ -304,6 +383,7 @@ const DevicesPage = () => {
   }
 
   const handleBulkRegister = async () => {
+    if (!canCreate) return
     if (!bulkFacilityId) {
       alert('Please select a target facility before registering.')
       return
@@ -616,24 +696,26 @@ const DevicesPage = () => {
               <Card.Title className="fw-bold fs-16">
                 Device Inventory
               </Card.Title>
-              <div className="d-flex gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="shadow-sm"
-                  onClick={() => setShowAddModal(true)}
-                >
-                  <i className="bi bi-plus-lg me-1"></i> Register Device
-                </Button>
-                <Button
-                  variant="secondary-light"
-                  size="sm"
-                  className="shadow-sm border-0"
-                  onClick={handleScanNetwork}
-                >
-                  <i className="bi bi-broadcast me-1"></i> Scan Network
-                </Button>
-              </div>
+              {canCreate ? (
+                <div className="d-flex gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="shadow-sm"
+                    onClick={() => setShowAddModal(true)}
+                  >
+                    <i className="bi bi-plus-lg me-1"></i> Register Device
+                  </Button>
+                  <Button
+                    variant="secondary-light"
+                    size="sm"
+                    className="shadow-sm border-0"
+                    onClick={handleScanNetwork}
+                  >
+                    <i className="bi bi-broadcast me-1"></i> Scan Network
+                  </Button>
+                </div>
+              ) : null}
             </Card.Header>
             <Card.Body>
               <Row className="mb-4 gy-3 gx-3 bg-primary-transparent p-3 rounded-3 mx-0 border border-primary-transparent">
@@ -646,12 +728,17 @@ const DevicesPage = () => {
                     size="sm"
                     className="border-default shadow-none"
                     value={selectedOrg}
+                    disabled={organizations.length === 0}
                     onChange={(e) => {
                       setSelectedOrg(e.target.value)
-                      setSelectedFacility('All')
+                      setSelectedFacility('')
+                      setPreselectedFacilityId(null)
                       setCurrentPage(1)
                     }}
                   >
+                    {!selectedOrg && (
+                      <option value="">Select organization…</option>
+                    )}
                     {organizations.map((org) => (
                       <option key={org.id} value={org.id}>
                         {org.name}
@@ -668,8 +755,12 @@ const DevicesPage = () => {
                     size="sm"
                     className="border-default shadow-none"
                     value={selectedFacility}
+                    disabled={!selectedOrg || facilities.length === 0}
                     onChange={(e) => handleFacilityChange(e.target.value)}
                   >
+                    {!selectedFacility && (
+                      <option value="">Select facility…</option>
+                    )}
                     <option value="All">All Facilities</option>
                     {facilities.map((fac) => (
                       <option key={fac.id} value={fac.name}>
@@ -818,14 +909,16 @@ const DevicesPage = () => {
                                   <i className="bi bi-display"></i>
                                 </Button>
                               </OverlayTrigger>
-                              <Button
-                                variant="danger-light"
-                                size="sm"
-                                onClick={() => handleDelete(device.id)}
-                                className="btn-icon rounded-pill shadow-sm border-0"
-                              >
-                                <i className="bi bi-trash3"></i>
-                              </Button>
+                              {canCreate ? (
+                                <Button
+                                  variant="danger-light"
+                                  size="sm"
+                                  onClick={() => handleDelete(device.id)}
+                                  className="btn-icon rounded-pill shadow-sm border-0"
+                                >
+                                  <i className="bi bi-trash3"></i>
+                                </Button>
+                              ) : null}
                             </div>
                           </td>
                         </tr>
@@ -841,7 +934,16 @@ const DevicesPage = () => {
                             className="mt-2 fw-semibold"
                             onClick={() => {
                               setSearchQuery('')
-                              setSelectedFacility('All')
+                              if (organizations.length > 0) {
+                                setSelectedOrg(String(organizations[0].id))
+                              }
+                              if (facilities.length > 0) {
+                                setSelectedFacility(facilities[0].name)
+                                setPreselectedFacilityId(String(facilities[0].id))
+                              } else {
+                                setSelectedFacility('All')
+                                setPreselectedFacilityId(null)
+                              }
                             }}
                           >
                             Clear Filters
@@ -971,6 +1073,8 @@ const DevicesPage = () => {
         </Col>
       </Row>
 
+      {canCreate ? (
+      <>
       <Modal
         show={showAddModal}
         onHide={() => setShowAddModal(false)}
@@ -2042,6 +2146,8 @@ const DevicesPage = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      </>
+      ) : null}
     </React.Fragment>
   )
 }

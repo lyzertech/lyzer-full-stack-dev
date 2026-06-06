@@ -116,7 +116,7 @@ export default function FacilityEnergyChart({ facilityId }: FacilityEnergyChartP
     },
     yaxis: {
       title: {
-        text: 'Import Energy(kWh)',
+        text: 'Daily Energy (kWh)',
         style: { color: 'var(--text-muted)', fontWeight: 600 }
       },
       labels: {

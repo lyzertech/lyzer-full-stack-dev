@@ -50,18 +50,17 @@ class AcuvimController extends Controller
     }
 
     /**
-     * Return unique device/gateway combinations discovered in monitoring_acuvim,
-     * excluding any device_name that is already registered in monitoring_devices.
-     * Used by the "Scan Network" feature on the Devices page.
+     * Return unique device/gateway combinations discovered in monitoring_acuvim.
+     * Match key: monitoring_acuvim.device_serial ↔ monitoring_devices.device_code.
+     * "available" = serial not yet registered; "registered_elsewhere" = serial already taken.
      */
     public function scan()
     {
-        // Collect all device names already registered in monitoring_devices
-        $registeredNames = DB::table('monitoring_devices')
+        $registeredSerials = DB::table('monitoring_devices')
             ->whereNull('deleted_at')
-            ->pluck('name');
+            ->pluck('device_code');
 
-        $results = DB::table('monitoring_acuvim')
+        $discoveredQuery = DB::table('monitoring_acuvim')
             ->select([
                 'gateway_name',
                 'gateway_serial',
@@ -70,7 +69,7 @@ class AcuvimController extends Controller
                 'device_serial',
             ])
             ->whereNotNull('device_serial')
-            ->whereNotIn('device_name', $registeredNames)
+            ->where('device_serial', '!=', '')
             ->groupBy([
                 'gateway_name',
                 'gateway_serial',
@@ -79,10 +78,50 @@ class AcuvimController extends Controller
                 'device_serial',
             ])
             ->orderBy('gateway_name')
-            ->orderBy('device_name')
+            ->orderBy('device_name');
+
+        $available = (clone $discoveredQuery)
+            ->whereNotIn('device_serial', $registeredSerials)
             ->get();
 
-        return response()->json($results);
+        $registeredElsewhere = DB::table('monitoring_acuvim as a')
+            ->join('monitoring_devices as d', function ($join) {
+                $join->on('d.device_code', '=', 'a.device_serial')
+                    ->whereNull('d.deleted_at');
+            })
+            ->join('monitoring_facilities as f', 'f.id', '=', 'd.facility_id')
+            ->join('monitoring_organizations as o', 'o.id', '=', 'f.organization_id')
+            ->whereNotNull('a.device_serial')
+            ->where('a.device_serial', '!=', '')
+            ->groupBy([
+                'a.gateway_name',
+                'a.gateway_serial',
+                'a.device_name',
+                'a.device_model',
+                'a.device_serial',
+                'd.name',
+                'f.name',
+                'o.name',
+                'o.id',
+            ])
+            ->orderBy('a.gateway_name')
+            ->orderBy('a.device_name')
+            ->get([
+                'a.gateway_name',
+                'a.gateway_serial',
+                'a.device_name',
+                'a.device_model',
+                'a.device_serial',
+                'd.name as registered_name',
+                'f.name as facility_name',
+                'o.name as organization_name',
+                'o.id as organization_id',
+            ]);
+
+        return response()->json([
+            'available' => $available,
+            'registered_elsewhere' => $registeredElsewhere,
+        ]);
     }
 
     /**
@@ -164,7 +203,11 @@ class AcuvimController extends Controller
     }
 
     /**
-     * Return daily energy consumption (EP_IMP_kWh increment) for all devices in a facility.
+     * Return daily energy consumption derived from EP_TOTAL_kWh (cumulative register).
+     *
+     * EP_TOTAL_kWh is a running total on the meter — not daily usage. Per device/day:
+     * - multiple samples: MAX − MIN within the day
+     * - single sample: delta from the previous day's end reading
      *
      * GET /api/v1/monitoring/acuvim/daily-energy
      */
@@ -185,20 +228,49 @@ class AcuvimController extends Controller
             return response()->json([]);
         }
 
-        $data = DB::table('monitoring_acuvim')
-            ->selectRaw('DATE(Timestamp) as date, device_name, (MAX(EP_IMP_kWh) - MIN(EP_IMP_kWh)) as increment')
+        $rows = DB::table('monitoring_acuvim')
+            ->selectRaw(
+                'DATE(Timestamp) as date,
+                device_name,
+                MAX(EP_TOTAL_kWh) as max_reading,
+                MIN(EP_TOTAL_kWh) as min_reading,
+                COUNT(*) as sample_count'
+            )
             ->whereIn('device_name', $devices)
+            ->whereNotNull('EP_TOTAL_kWh')
             ->whereDate('Timestamp', '>=', $request->date_from)
             ->whereDate('Timestamp', '<=', $request->date_to)
             ->groupByRaw('DATE(Timestamp), device_name')
+            ->orderBy('date')
             ->get();
 
+        $byDevice = [];
+        foreach ($rows as $row) {
+            $byDevice[$row->device_name][] = $row;
+        }
+
         $result = [];
-        foreach ($data as $row) {
-            if (!isset($result[$row->date])) {
-                $result[$row->date] = 0;
+        foreach ($byDevice as $deviceDays) {
+            $prevMaxReading = null;
+
+            foreach ($deviceDays as $row) {
+                $maxReading = (float) $row->max_reading;
+                $minReading = (float) $row->min_reading;
+                $consumption = 0.0;
+
+                if ((int) $row->sample_count > 1 && $maxReading > $minReading) {
+                    $consumption = $maxReading - $minReading;
+                } elseif ($prevMaxReading !== null && $maxReading >= $prevMaxReading) {
+                    $consumption = $maxReading - $prevMaxReading;
+                }
+
+                $prevMaxReading = $maxReading;
+
+                if (! isset($result[$row->date])) {
+                    $result[$row->date] = 0;
+                }
+                $result[$row->date] += $consumption;
             }
-            $result[$row->date] += (float)$row->increment;
         }
 
         $formatted = [];
@@ -206,9 +278,7 @@ class AcuvimController extends Controller
             $formatted[] = ['date' => $date, 'value' => round($val, 2)];
         }
 
-        usort($formatted, function($a, $b) {
-            return strcmp($a['date'], $b['date']);
-        });
+        usort($formatted, fn ($a, $b) => strcmp($a['date'], $b['date']));
 
         return response()->json($formatted);
     }

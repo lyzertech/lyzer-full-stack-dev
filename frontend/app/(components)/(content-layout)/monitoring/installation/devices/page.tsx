@@ -55,6 +55,9 @@ const DevicesPage = () => {
   const [showScanModal, setShowScanModal] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanResults, setScanResults] = useState<any[]>([])
+  const [scanRegisteredElsewhere, setScanRegisteredElsewhere] = useState<any[]>(
+    [],
+  )
   const [scanError, setScanError] = useState<string | null>(null)
   const [selectedScanKeys, setSelectedScanKeys] = useState<Set<string>>(
     new Set(),
@@ -336,12 +339,23 @@ const DevicesPage = () => {
     setScanning(true)
     setScanError(null)
     setScanResults([])
+    setScanRegisteredElsewhere([])
     setSelectedScanKeys(new Set())
     setBulkProgress(null)
     setBulkFacilityId(facilities[0]?.id ? String(facilities[0].id) : '')
     try {
       const res = await apiClient.get('/monitoring/acuvim/scan')
-      setScanResults(res.data)
+      const payload = res.data
+      if (Array.isArray(payload)) {
+        setScanResults(payload)
+      } else if (payload && typeof payload === 'object') {
+        const scanPayload = payload as {
+          available?: any[]
+          registered_elsewhere?: any[]
+        }
+        setScanResults(scanPayload.available ?? [])
+        setScanRegisteredElsewhere(scanPayload.registered_elsewhere ?? [])
+      }
     } catch (err: any) {
       setScanError(err.response?.data?.message || err.message || 'Network error. Could not reach the server.')
     } finally {
@@ -1927,14 +1941,35 @@ const DevicesPage = () => {
           )}
 
           {/* ── Empty ── */}
-          {!scanning && !scanError && scanResults.length === 0 && (
-            <div className="text-center py-5">
-              <i className="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
-              <p className="text-muted fw-medium">
-                No new devices found — all are already registered.
-              </p>
-            </div>
-          )}
+          {!scanning &&
+            !scanError &&
+            scanResults.length === 0 &&
+            scanRegisteredElsewhere.length === 0 && (
+              <div className="text-center py-5">
+                <i className="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+                <p className="text-muted fw-medium mb-1">
+                  No Acuvim devices found in telemetry data.
+                </p>
+                <p className="text-muted fs-12 mb-0">
+                  Ensure the gateway has sent data to monitoring_acuvim with a
+                  valid device serial.
+                </p>
+              </div>
+            )}
+
+          {!scanning &&
+            !scanError &&
+            scanResults.length === 0 &&
+            scanRegisteredElsewhere.length > 0 && (
+              <div className="alert alert-info py-2 mb-3 fs-13">
+                <i className="bi bi-info-circle me-1"></i>
+                All discovered devices are already registered in the system
+                {selectedOrg
+                  ? ' (they may belong to another organization or facility)'
+                  : ''}
+                . See the list below for where each device is registered.
+              </div>
+            )}
 
           {/* ── Bulk progress ── */}
           {bulkProgress && (
@@ -2134,6 +2169,54 @@ const DevicesPage = () => {
                 </Table>
               </div>
             </>
+          )}
+
+          {!scanning && scanRegisteredElsewhere.length > 0 && (
+            <div className="mt-2">
+              <h6 className="fw-bold fs-13 text-muted text-uppercase mb-3">
+                Already registered ({scanRegisteredElsewhere.length})
+              </h6>
+              <div className="table-responsive">
+                <Table className="table table-sm align-middle text-nowrap border-0 fs-13 mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th className="border-0 fw-bold text-uppercase fs-11 text-muted">
+                        Telemetry Name
+                      </th>
+                      <th className="border-0 fw-bold text-uppercase fs-11 text-muted">
+                        Serial
+                      </th>
+                      <th className="border-0 fw-bold text-uppercase fs-11 text-muted">
+                        Registered As
+                      </th>
+                      <th className="border-0 fw-bold text-uppercase fs-11 text-muted">
+                        Organization
+                      </th>
+                      <th className="border-0 fw-bold text-uppercase fs-11 text-muted">
+                        Facility
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scanRegisteredElsewhere.map((item, idx) => (
+                      <tr key={idx} className="border-bottom border-default">
+                        <td className="fw-semibold">
+                          {item.device_name || '—'}
+                        </td>
+                        <td>
+                          <code className="text-secondary fs-11 px-2 py-1 bg-secondary-transparent rounded border border-secondary-transparent">
+                            {item.device_serial || '—'}
+                          </code>
+                        </td>
+                        <td>{item.registered_name || '—'}</td>
+                        <td>{item.organization_name || '—'}</td>
+                        <td>{item.facility_name || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            </div>
           )}
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0">

@@ -334,6 +334,15 @@ const DevicesPage = () => {
     }
   }
 
+  const sortByDeviceSerial = (items: any[]) =>
+    [...items].sort((a, b) =>
+      String(a.device_serial ?? '').localeCompare(
+        String(b.device_serial ?? ''),
+        undefined,
+        { numeric: true, sensitivity: 'base' },
+      ),
+    )
+
   const handleScanNetwork = async () => {
     setShowScanModal(true)
     setScanning(true)
@@ -347,14 +356,16 @@ const DevicesPage = () => {
       const res = await apiClient.get('/monitoring/acuvim/scan')
       const payload = res.data
       if (Array.isArray(payload)) {
-        setScanResults(payload)
+        setScanResults(sortByDeviceSerial(payload))
       } else if (payload && typeof payload === 'object') {
         const scanPayload = payload as {
           available?: any[]
           registered_elsewhere?: any[]
         }
-        setScanResults(scanPayload.available ?? [])
-        setScanRegisteredElsewhere(scanPayload.registered_elsewhere ?? [])
+        setScanResults(sortByDeviceSerial(scanPayload.available ?? []))
+        setScanRegisteredElsewhere(
+          sortByDeviceSerial(scanPayload.registered_elsewhere ?? []),
+        )
       }
     } catch (err: any) {
       setScanError(err.response?.data?.message || err.message || 'Network error. Could not reach the server.')

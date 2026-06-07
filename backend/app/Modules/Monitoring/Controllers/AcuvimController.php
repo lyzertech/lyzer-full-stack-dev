@@ -77,8 +77,7 @@ class AcuvimController extends Controller
                 'device_model',
                 'device_serial',
             ])
-            ->orderBy('gateway_name')
-            ->orderBy('device_name');
+            ->orderBy('device_serial');
 
         $available = (clone $discoveredQuery)
             ->whereNotIn('device_serial', $registeredSerials)
@@ -104,8 +103,7 @@ class AcuvimController extends Controller
                 'o.name',
                 'o.id',
             ])
-            ->orderBy('a.gateway_name')
-            ->orderBy('a.device_name')
+            ->orderBy('a.device_serial')
             ->get([
                 'a.gateway_name',
                 'a.gateway_serial',
@@ -205,6 +203,10 @@ class AcuvimController extends Controller
     /**
      * Return daily energy consumption derived from EP_TOTAL_kWh (cumulative register).
      *
+     * Match key: monitoring_acuvim.device_serial ↔ monitoring_devices.device_code
+     * (and device_name ↔ name) so telemetry from other facilities sharing the same
+     * display name is excluded.
+     *
      * EP_TOTAL_kWh is a running total on the meter — not daily usage. Per device/day:
      * - multiple samples: MAX − MIN within the day
      * - single sample: delta from the previous day's end reading
@@ -219,34 +221,43 @@ class AcuvimController extends Controller
             'date_to'     => 'required|date|after_or_equal:date_from',
         ]);
 
-        $devices = DB::table('monitoring_devices')
+        $deviceCount = DB::table('monitoring_devices')
             ->where('facility_id', $request->facility_id)
             ->whereNull('deleted_at')
-            ->pluck('name');
+            ->whereNotNull('device_code')
+            ->where('device_code', '!=', '')
+            ->count();
 
-        if ($devices->isEmpty()) {
+        if ($deviceCount === 0) {
             return response()->json([]);
         }
 
-        $rows = DB::table('monitoring_acuvim')
+        $rows = DB::table('monitoring_devices as d')
+            ->join('monitoring_acuvim as a', function ($join) {
+                $join->on('a.device_serial', '=', 'd.device_code')
+                    ->on('a.device_name', '=', 'd.name');
+            })
+            ->where('d.facility_id', $request->facility_id)
+            ->whereNull('d.deleted_at')
+            ->whereNotNull('a.EP_TOTAL_kWh')
+            ->whereNotNull('a.device_serial')
+            ->where('a.device_serial', '!=', '')
+            ->whereDate('a.Timestamp', '>=', $request->date_from)
+            ->whereDate('a.Timestamp', '<=', $request->date_to)
             ->selectRaw(
-                'DATE(Timestamp) as date,
-                device_name,
-                MAX(EP_TOTAL_kWh) as max_reading,
-                MIN(EP_TOTAL_kWh) as min_reading,
+                'DATE(a.Timestamp) as date,
+                d.device_code,
+                MAX(a.EP_TOTAL_kWh) as max_reading,
+                MIN(a.EP_TOTAL_kWh) as min_reading,
                 COUNT(*) as sample_count'
             )
-            ->whereIn('device_name', $devices)
-            ->whereNotNull('EP_TOTAL_kWh')
-            ->whereDate('Timestamp', '>=', $request->date_from)
-            ->whereDate('Timestamp', '<=', $request->date_to)
-            ->groupByRaw('DATE(Timestamp), device_name')
+            ->groupByRaw('DATE(a.Timestamp), d.device_code')
             ->orderBy('date')
             ->get();
 
         $byDevice = [];
         foreach ($rows as $row) {
-            $byDevice[$row->device_name][] = $row;
+            $byDevice[$row->device_code][] = $row;
         }
 
         $result = [];

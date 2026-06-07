@@ -63,6 +63,16 @@ function mapDeviceIcon(deviceType: string | undefined): string {
   }
 }
 
+function sortByDeviceCode<T extends { device_code?: string | null }>(devices: T[]): T[] {
+  return [...devices].sort((a, b) =>
+    String(a.device_code ?? '').localeCompare(
+      String(b.device_code ?? ''),
+      undefined,
+      { numeric: true, sensitivity: 'base' },
+    ),
+  )
+}
+
 function buildTree(orgs: any[]): DeviceNode[] {
   return orgs.map((org) => ({
     id:    `org-${org.id}`,
@@ -74,7 +84,7 @@ function buildTree(orgs: any[]): DeviceNode[] {
       label: fac.name,
       type:  'facility' as const,
       icon:  'ri-community-line',
-      children: (fac.devices ?? []).map((dev: any): DeviceNode => ({
+      children: sortByDeviceCode(fac.devices ?? []).map((dev: any): DeviceNode => ({
         id:     `dev-${dev.id}`,
         label:  dev.name,
         type:   'device' as const,
@@ -227,7 +237,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               selectedId={selectedId}
               onSelect={onSelect}
               theme={t}
-              defaultOpen={child.type === 'facility'}
             />
           ))}
         </div>
@@ -393,7 +402,7 @@ const DeviceTree: React.FC<DeviceTreeProps> = ({ selectedId, onSelect }) => {
           </div>
         ) : (
           tree.map((root) => (
-            <TreeNode key={root.id} node={root} depth={0} selectedId={selectedId} onSelect={onSelect} theme={t} defaultOpen />
+            <TreeNode key={root.id} node={root} depth={0} selectedId={selectedId} onSelect={onSelect} theme={t} />
           ))
         )}
       </div>

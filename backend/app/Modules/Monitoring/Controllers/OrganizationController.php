@@ -18,7 +18,11 @@ class OrganizationController extends Controller
 
     public function deviceTree()
     {
-        return response()->json(Organization::with(['facilities.devices'])->get());
+        return response()->json(
+            Organization::with([
+                'facilities.devices' => fn ($q) => $q->orderBy('device_code'),
+            ])->get()
+        );
     }
 
     public function store(Request $request)

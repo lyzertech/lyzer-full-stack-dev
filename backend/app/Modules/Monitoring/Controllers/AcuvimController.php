@@ -146,6 +146,7 @@ class AcuvimController extends Controller
      *
      * GET /api/v1/monitoring/acuvim/data
      *   ?device_name=METER_01
+     *   &device_serial=F-019   (optional — scopes to monitoring_devices.device_code)
      *   &date_from=2025-01-01
      *   &date_to=2025-01-31
      *   &per_page=25        (default 50, max 500)
@@ -155,16 +156,21 @@ class AcuvimController extends Controller
     public function data(Request $request)
     {
         $request->validate([
-            'device_name'  => 'required|string|max:255',
-            'date_from'    => 'nullable|date',
-            'date_to'      => 'nullable|date|after_or_equal:date_from',
-            'per_page'     => 'nullable|integer|min:1|max:500',
-            'interval_min' => 'nullable|integer|in:5,10,15,30,60',
+            'device_name'   => 'required|string|max:255',
+            'device_serial' => 'nullable|string|max:100',
+            'date_from'     => 'nullable|date',
+            'date_to'       => 'nullable|date|after_or_equal:date_from',
+            'per_page'      => 'nullable|integer|min:1|max:500',
+            'interval_min'  => 'nullable|integer|in:5,10,15,30,60',
         ]);
 
         $query = DB::table('monitoring_acuvim')
             ->where('device_name', $request->device_name)
             ->orderByDesc('Timestamp');
+
+        if ($request->filled('device_serial')) {
+            $query->where('device_serial', $request->device_serial);
+        }
 
         if ($request->filled('date_from')) {
             $query->whereDate('Timestamp', '>=', $request->date_from);

@@ -121,10 +121,8 @@ export default function FacilityEnergyChart({ facilityId }: FacilityEnergyChartP
       },
       labels: {
         style: { colors: 'var(--text-muted)' },
-        formatter: (val: number) => {
-          if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
-          return val;
-        }
+        formatter: (val: number) =>
+          Number(val).toLocaleString('en-US', { maximumFractionDigits: 0 }),
       }
     },
     grid: {
@@ -133,7 +131,13 @@ export default function FacilityEnergyChart({ facilityId }: FacilityEnergyChartP
       yaxis: { lines: { show: true } }
     },
     theme: { mode: 'light' },
-    tooltip: { theme: 'dark' }
+    tooltip: {
+      theme: 'dark',
+      y: {
+        formatter: (val: number) =>
+          `${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh`,
+      },
+    },
   };
 
   const series = [{

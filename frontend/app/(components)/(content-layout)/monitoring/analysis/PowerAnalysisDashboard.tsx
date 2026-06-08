@@ -266,7 +266,12 @@ const PowerAnalysisDashboard: React.FC = () => {
   const [error, setError]                  = useState<string | null>(null)
 
   // Fetch bucketed records for device + date + interval (server-side aggregation)
-  const fetchData = useCallback(async (deviceName: string, date: string, interval: number) => {
+  const fetchData = useCallback(async (
+    deviceName: string,
+    deviceSerial: string | undefined,
+    date: string,
+    interval: number,
+  ) => {
     setLoading(true)
     setError(null)
     try {
@@ -277,6 +282,9 @@ const PowerAnalysisDashboard: React.FC = () => {
         interval_min: String(interval),
         page:         '1',
       })
+      if (deviceSerial) {
+        params.set('device_serial', deviceSerial)
+      }
       const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
       setRows(Array.isArray(res.data?.data) ? res.data.data : [])
     } catch (e: any) {
@@ -289,7 +297,12 @@ const PowerAnalysisDashboard: React.FC = () => {
   // Refetch when device, date, or interval changes
   useEffect(() => {
     if (selectedDevice?.meta?.device_name) {
-      fetchData(selectedDevice.meta.device_name, selectedDate, intervalMin)
+      fetchData(
+        selectedDevice.meta.device_name,
+        selectedDevice.meta.device_code,
+        selectedDate,
+        intervalMin,
+      )
     } else {
       setRows([])
     }
@@ -300,7 +313,12 @@ const PowerAnalysisDashboard: React.FC = () => {
   useEffect(() => {
     if (!isLive || !isToday || !selectedDevice?.meta?.device_name) return
     const id = setInterval(
-      () => fetchData(selectedDevice.meta!.device_name!, selectedDate, intervalMin),
+      () => fetchData(
+        selectedDevice.meta!.device_name!,
+        selectedDevice.meta!.device_code,
+        selectedDate,
+        intervalMin,
+      ),
       30_000
     )
     return () => clearInterval(id)

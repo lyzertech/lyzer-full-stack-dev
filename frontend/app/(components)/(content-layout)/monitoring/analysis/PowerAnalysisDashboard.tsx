@@ -130,61 +130,125 @@ function buildCharts(rows: AcuvimRow[], slots: string[], intervalMin: number) {
   return { current, lnVolt, llVolt, freq, active, reactive, apparent, pf }
 }
 
-function buildEnergyCharts(rows: AcuvimRow[], slots: string[], intervalMin: number) {
+type EnergyVals = {
+  EP_IMP_kWh: number | null
+  EP_EXP_kWh: number | null
+  EQ_IMP_kvarh: number | null
+  EQ_EXP_kvarh: number | null
+  ES_kVAh: number | null
+}
+
+function extractEnergyVals(r: AcuvimRow): EnergyVals {
+  return {
+    EP_IMP_kWh: n(r.EP_IMP_kWh),
+    EP_EXP_kWh: n(r.EP_EXP_kWh),
+    EQ_IMP_kvarh: n(r.EQ_IMP_kvarh),
+    EQ_EXP_kvarh: n(r.EQ_EXP_kvarh),
+    ES_kVAh: n(r.ES_kVAh),
+  }
+}
+
+function energyDelta(current: number | null, previous: number | null): number | null {
+  if (current === null || previous === null) return null
+  return Number(Math.max(0, current - previous).toFixed(2))
+}
+
+function pushEnergyDeltas(
+  arrays: {
+    epImp: SingleData[]
+    epExp: SingleData[]
+    eqImp: SingleData[]
+    eqExp: SingleData[]
+    es: SingleData[]
+  },
+  slot: string,
+  current: EnergyVals,
+  previous: EnergyVals,
+) {
+  arrays.epImp.push({ time: slot, value: energyDelta(current.EP_IMP_kWh, previous.EP_IMP_kWh) })
+  arrays.epExp.push({ time: slot, value: energyDelta(current.EP_EXP_kWh, previous.EP_EXP_kWh) })
+  arrays.eqImp.push({ time: slot, value: energyDelta(current.EQ_IMP_kvarh, previous.EQ_IMP_kvarh) })
+  arrays.eqExp.push({ time: slot, value: energyDelta(current.EQ_EXP_kvarh, previous.EQ_EXP_kvarh) })
+  arrays.es.push({ time: slot, value: energyDelta(current.ES_kVAh, previous.ES_kVAh) })
+}
+
+function pushEnergyNulls(arrays: {
+  epImp: SingleData[]
+  epExp: SingleData[]
+  eqImp: SingleData[]
+  eqExp: SingleData[]
+  es: SingleData[]
+}, slot: string) {
+  arrays.epImp.push({ time: slot, value: null })
+  arrays.epExp.push({ time: slot, value: null })
+  arrays.eqImp.push({ time: slot, value: null })
+  arrays.eqExp.push({ time: slot, value: null })
+  arrays.es.push({ time: slot, value: null })
+}
+
+/** Last bucketed row of the previous day — baseline for 00:00 consumption. */
+function lastBucketOfDay(rows: AcuvimRow[]): AcuvimRow | null {
+  if (rows.length === 0) return null
+  return [...rows].sort(
+    (a, b) => new Date(a.Timestamp).getTime() - new Date(b.Timestamp).getTime(),
+  )[rows.length - 1]
+}
+
+function buildEnergyCharts(
+  rows: AcuvimRow[],
+  slots: string[],
+  intervalMin: number,
+  baselineRow: AcuvimRow | null = null,
+) {
   const byTime = buildByTime(rows, intervalMin)
+  const baselineVals = baselineRow ? extractEnergyVals(baselineRow) : null
+  const firstDataIdx = slots.findIndex((s) => byTime.has(s))
+  const skipDeltaAtIdx =
+    baselineVals !== null && firstDataIdx > 0 ? firstDataIdx : -1
 
-  const epImp: SingleData[] = []
-  const epExp: SingleData[] = []
-  const eqImp: SingleData[] = []
-  const eqExp: SingleData[] = []
-  const es: SingleData[] = []
+  const arrays = {
+    epImp: [] as SingleData[],
+    epExp: [] as SingleData[],
+    eqImp: [] as SingleData[],
+    eqExp: [] as SingleData[],
+    es: [] as SingleData[],
+  }
 
-  let lastVals: {
-    EP_IMP_kWh: number | null
-    EP_EXP_kWh: number | null
-    EQ_IMP_kvarh: number | null
-    EQ_EXP_kvarh: number | null
-    ES_kVAh: number | null
-  } | null = null
+  let lastVals: EnergyVals | null = null
   let lastFilledIdx = -1
 
   for (let idx = 0; idx < slots.length; idx++) {
     const slot = slots[idx]
     const r = byTime.get(slot)
 
+    // 00:00 — consumption vs previous day (leftmost point on chart)
+    if (idx === 0 && baselineVals && firstDataIdx >= 0) {
+      const firstR = byTime.get(slots[firstDataIdx])!
+      pushEnergyDeltas(arrays, slot, extractEnergyVals(firstR), baselineVals)
+      lastVals = extractEnergyVals(firstR)
+      lastFilledIdx = firstDataIdx
+      continue
+    }
+
     if (r) {
-      const consecutive = lastFilledIdx >= 0 && idx - lastFilledIdx === 1
-      if (lastVals && consecutive) {
-        epImp.push({ time: slot, value: n(r.EP_IMP_kWh) !== null && lastVals.EP_IMP_kWh !== null ? Number(Math.max(0, r.EP_IMP_kWh! - lastVals.EP_IMP_kWh).toFixed(2)) : null })
-        epExp.push({ time: slot, value: n(r.EP_EXP_kWh) !== null && lastVals.EP_EXP_kWh !== null ? Number(Math.max(0, r.EP_EXP_kWh! - lastVals.EP_EXP_kWh).toFixed(2)) : null })
-        eqImp.push({ time: slot, value: n(r.EQ_IMP_kvarh) !== null && lastVals.EQ_IMP_kvarh !== null ? Number(Math.max(0, r.EQ_IMP_kvarh! - lastVals.EQ_IMP_kvarh).toFixed(2)) : null })
-        eqExp.push({ time: slot, value: n(r.EQ_EXP_kvarh) !== null && lastVals.EQ_EXP_kvarh !== null ? Number(Math.max(0, r.EQ_EXP_kvarh! - lastVals.EQ_EXP_kvarh).toFixed(2)) : null })
-        es.push({ time: slot, value: n(r.ES_kVAh) !== null && lastVals.ES_kVAh !== null ? Number(Math.max(0, r.ES_kVAh! - lastVals.ES_kVAh).toFixed(2)) : null })
+      if (idx === skipDeltaAtIdx) {
+        pushEnergyNulls(arrays, slot)
       } else {
-        epImp.push({ time: slot, value: null })
-        epExp.push({ time: slot, value: null })
-        eqImp.push({ time: slot, value: null })
-        eqExp.push({ time: slot, value: null })
-        es.push({ time: slot, value: null })
+        const consecutive = lastFilledIdx >= 0 && idx - lastFilledIdx === 1
+        if (lastVals && consecutive) {
+          pushEnergyDeltas(arrays, slot, extractEnergyVals(r), lastVals)
+        } else {
+          pushEnergyNulls(arrays, slot)
+        }
       }
-      lastVals = {
-        EP_IMP_kWh: n(r.EP_IMP_kWh),
-        EP_EXP_kWh: n(r.EP_EXP_kWh),
-        EQ_IMP_kvarh: n(r.EQ_IMP_kvarh),
-        EQ_EXP_kvarh: n(r.EQ_EXP_kvarh),
-        ES_kVAh: n(r.ES_kVAh),
-      }
+      lastVals = extractEnergyVals(r)
       lastFilledIdx = idx
     } else {
-      epImp.push({ time: slot, value: null })
-      epExp.push({ time: slot, value: null })
-      eqImp.push({ time: slot, value: null })
-      eqExp.push({ time: slot, value: null })
-      es.push({ time: slot, value: null })
+      pushEnergyNulls(arrays, slot)
     }
   }
 
-  return { epImp, epExp, eqImp, eqExp, es }
+  return arrays
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -254,6 +318,34 @@ function todayStr() {
   return `${y}-${m}-${day}` // YYYY-MM-DD in local timezone
 }
 
+function prevDateStr(date: string): string {
+  const d = new Date(`${date}T12:00:00`)
+  d.setDate(d.getDate() - 1)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function buildDataParams(
+  deviceName: string,
+  deviceSerial: string | undefined,
+  date: string,
+  interval: number,
+) {
+  const params = new URLSearchParams({
+    device_name:  deviceName,
+    date_from:    date,
+    date_to:      date,
+    interval_min: String(interval),
+    page:         '1',
+  })
+  if (deviceSerial) {
+    params.set('device_serial', deviceSerial)
+  }
+  return params
+}
+
 const PowerAnalysisDashboard: React.FC = () => {
   const theme = useAnalysisTheme()
   const [activeTab, setActiveTab]            = useState<'Real-time' | 'Energy'>('Real-time')
@@ -262,6 +354,7 @@ const PowerAnalysisDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate]      = useState<string>(todayStr)
   const [intervalMin, setIntervalMin]      = useState<number>(5)
   const [rows, setRows]                    = useState<AcuvimRow[]>([])
+  const [energyBaseline, setEnergyBaseline] = useState<AcuvimRow | null>(null)
   const [loading, setLoading]              = useState(false)
   const [error, setError]                  = useState<string | null>(null)
 
@@ -275,20 +368,18 @@ const PowerAnalysisDashboard: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({
-        device_name:  deviceName,
-        date_from:    date,
-        date_to:      date,
-        interval_min: String(interval),
-        page:         '1',
-      })
-      if (deviceSerial) {
-        params.set('device_serial', deviceSerial)
-      }
-      const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
-      setRows(Array.isArray(res.data?.data) ? res.data.data : [])
+      const prevDate = prevDateStr(date)
+      const [todayRes, prevRes] = await Promise.all([
+        apiClient.get(`/monitoring/acuvim/data?${buildDataParams(deviceName, deviceSerial, date, interval)}`),
+        apiClient.get(`/monitoring/acuvim/data?${buildDataParams(deviceName, deviceSerial, prevDate, interval)}`),
+      ])
+      const todayRows = Array.isArray(todayRes.data?.data) ? todayRes.data.data : []
+      const prevRows = Array.isArray(prevRes.data?.data) ? prevRes.data.data : []
+      setRows(todayRows)
+      setEnergyBaseline(lastBucketOfDay(prevRows))
     } catch (e: any) {
       setError(e.message ?? 'Network error')
+      setEnergyBaseline(null)
     } finally {
       setLoading(false)
     }
@@ -305,6 +396,7 @@ const PowerAnalysisDashboard: React.FC = () => {
       )
     } else {
       setRows([])
+      setEnergyBaseline(null)
     }
   }, [selectedDevice, selectedDate, intervalMin, fetchData])
 
@@ -331,8 +423,8 @@ const PowerAnalysisDashboard: React.FC = () => {
     [rows, slots, intervalMin]
   )
   const energyCharts = React.useMemo(
-    () => buildEnergyCharts(rows, slots, intervalMin),
-    [rows, slots, intervalMin]
+    () => buildEnergyCharts(rows, slots, intervalMin, energyBaseline),
+    [rows, slots, intervalMin, energyBaseline]
   )
   const mappedPointCount = rows.length
   const latest = rows[0] // newest record (desc order from API)
@@ -636,15 +728,15 @@ const PowerAnalysisDashboard: React.FC = () => {
               ) : (
                 <>
                   <div className="pma-mid-row">
-                    <SingleWaveChart title="Active Energy (Imp)" data={energyCharts.epImp}color="#10b981" unit="kWh" />
-                    <SingleWaveChart title="Active Energy (Exp)" data={energyCharts.epExp}color="#ef4444" unit="kWh" />
+                    <SingleWaveChart title="Active Energy (Imp)" data={energyCharts.epImp} color="#10b981" unit="kWh" flushLeft />
+                    <SingleWaveChart title="Active Energy (Exp)" data={energyCharts.epExp} color="#ef4444" unit="kWh" flushLeft />
                   </div>
                   <div className="pma-mid-row">
-                    <SingleWaveChart title="Reactive Energy (Imp)" data={energyCharts.eqImp}color="#3b82f6" unit="kvarh" />
-                    <SingleWaveChart title="Reactive Energy (Exp)" data={energyCharts.eqExp}color="#8b5cf6" unit="kvarh" />
+                    <SingleWaveChart title="Reactive Energy (Imp)" data={energyCharts.eqImp} color="#3b82f6" unit="kvarh" flushLeft />
+                    <SingleWaveChart title="Reactive Energy (Exp)" data={energyCharts.eqExp} color="#8b5cf6" unit="kvarh" flushLeft />
                   </div>
                   <div className="pma-bottom" style={{ display: 'block' }}>
-                    <SingleWaveChart title="Apparent Energy" data={energyCharts.es}color="#f59e0b" unit="kVAh" />
+                    <SingleWaveChart title="Apparent Energy" data={energyCharts.es} color="#f59e0b" unit="kVAh" flushLeft />
                   </div>
                 </>
               )}

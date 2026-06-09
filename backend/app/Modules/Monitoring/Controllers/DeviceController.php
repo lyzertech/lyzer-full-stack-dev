@@ -24,7 +24,15 @@ class DeviceController extends Controller
             });
         }
         
-        return response()->json($query->get());
+        $devices = $query->get();
+        
+        // Transform the collection to use dynamic_status as the main status field
+        $devices->transform(function ($device) {
+            $device->status = $device->dynamic_status;
+            return $device;
+        });
+        
+        return response()->json($devices);
     }
 
     public function store(Request $request)

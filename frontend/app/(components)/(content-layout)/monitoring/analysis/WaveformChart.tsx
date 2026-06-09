@@ -190,10 +190,12 @@ interface SingleProps {
   color?: string
   unit: string
   forceTooltipRight?: boolean
+  /** First point sits on the Y-axis (no gap before 00:00). */
+  flushLeft?: boolean
 }
 
 export const SingleWaveChart: React.FC<SingleProps> = ({
-  title, data, color = '#a3e635', unit, forceTooltipRight,
+  title, data, color = '#a3e635', unit, forceTooltipRight, flushLeft,
 }) => {
   const t = useAnalysisTheme()
   const chart = t.chart
@@ -218,12 +220,23 @@ export const SingleWaveChart: React.FC<SingleProps> = ({
         ? function (pt: number[]) { return [pt[0] + 15, '10%'] }
         : undefined,
     },
-    grid: { top: 10, right: 10, left: 35, bottom: 25 },
+    grid: { top: 10, right: 10, left: flushLeft ? 48 : 35, bottom: 25 },
     xAxis: {
       type: 'category',
       data: xAxisData,
-      axisLine: { lineStyle: { color: chart.axisLine } },
-      axisLabel: { color: chart.textMuted, fontSize: 11 },
+      boundaryGap: !flushLeft,
+      axisLine: { lineStyle: { color: chart.axisLine }, onZero: flushLeft ?? false },
+      axisLabel: {
+        color: chart.textMuted,
+        fontSize: 11,
+        ...(flushLeft
+          ? {
+              interval: (index: number) => index === 0 || index === xAxisData.length - 1,
+              showMinLabel: true,
+              showMaxLabel: true,
+            }
+          : {}),
+      },
       axisTick: { show: false },
     },
     yAxis: solidYAxis(chart),

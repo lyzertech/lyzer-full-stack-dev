@@ -958,50 +958,72 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
               />
             )
             
-            // Open contact circuit breaker in the line
+            // Relay Contact Open symbol
             connections.push(
               <g key={`${node.id}-${child.id}-breaker`} transform={`translate(${endX}, ${midY + 10})`}>
-                {/* Line segment before contact */}
+                {/* Line segment from top to fixed contact */}
                 <line 
                   x1="0" 
                   y1="-20" 
                   x2="0" 
-                  y2="-6" 
+                  y2="-8" 
                   stroke="#ff3333" 
-                  strokeWidth="3.5" 
+                  strokeWidth="3" 
                 />
-                {/* Line segment after contact */}
+                
+                {/* Fixed contact (bottom) */}
+                <circle 
+                  cx="0" 
+                  cy="-6" 
+                  r="2" 
+                  fill="#ff3333"
+                />
+                
+                {/* Moveable contact arm (angled away) */}
                 <line 
                   x1="0" 
-                  y1="6" 
+                  y1="8" 
+                  x2="10" 
+                  y2="-2" 
+                  stroke="#ff3333" 
+                  strokeWidth="3" 
+                  strokeLinecap="round"
+                />
+                
+                {/* Moveable contact point */}
+                <circle 
+                  cx="10" 
+                  cy="-2" 
+                  r="2" 
+                  fill="#ff3333"
+                />
+                
+                {/* Line segment from moveable contact to bottom */}
+                <line 
+                  x1="0" 
+                  y1="8" 
                   x2="0" 
                   y2="20" 
                   stroke="#ff3333" 
-                  strokeWidth="3.5" 
+                  strokeWidth="3" 
                 />
-                {/* Open contact position (angled away) */}
-                <line 
-                  x1="0" 
-                  y1="-6" 
-                  x2="8" 
-                  y2="-12" 
+                
+                {/* Contact gap indicator (small arc) */}
+                <path 
+                  d="M 2,-4 Q 6,0 10,-2" 
+                  fill="none" 
                   stroke="#ff3333" 
-                  strokeWidth="3.5" 
-                  strokeLinecap="round"
+                  strokeWidth="1" 
+                  strokeDasharray="2,1"
+                  opacity="0.6"
                 />
-                {/* Contact point */}
-                <circle 
-                  cx="0" 
-                  cy="6" 
-                  r="3" 
-                  fill="#ff3333"
-                />
+                
                 {/* Breaker label */}
                 <text 
-                  x="12" 
-                  y="2" 
+                  x="15" 
+                  y="3" 
                   fill="#ff3333" 
-                  fontSize="10"
+                  fontSize="9"
                   fontWeight="bold"
                 >
                   CB-{childIndex + 1}

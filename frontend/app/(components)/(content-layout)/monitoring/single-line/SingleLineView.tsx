@@ -964,44 +964,44 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
                 {/* Line segment before contact */}
                 <line 
                   x1="0" 
-                  y1="-10" 
+                  y1="-20" 
                   x2="0" 
-                  y2="-3" 
+                  y2="-6" 
                   stroke="#ff3333" 
-                  strokeWidth="2.5" 
+                  strokeWidth="3.5" 
                 />
                 {/* Line segment after contact */}
                 <line 
                   x1="0" 
-                  y1="3" 
+                  y1="6" 
                   x2="0" 
-                  y2="10" 
+                  y2="20" 
                   stroke="#ff3333" 
-                  strokeWidth="2.5" 
+                  strokeWidth="3.5" 
                 />
                 {/* Open contact position (angled away) */}
                 <line 
                   x1="0" 
-                  y1="-3" 
-                  x2="4" 
-                  y2="-6" 
+                  y1="-6" 
+                  x2="8" 
+                  y2="-12" 
                   stroke="#ff3333" 
-                  strokeWidth="2.5" 
+                  strokeWidth="3.5" 
                   strokeLinecap="round"
                 />
                 {/* Contact point */}
                 <circle 
                   cx="0" 
-                  cy="3" 
-                  r="1.5" 
+                  cy="6" 
+                  r="3" 
                   fill="#ff3333"
                 />
                 {/* Breaker label */}
                 <text 
-                  x="8" 
-                  y="1" 
+                  x="12" 
+                  y="2" 
                   fill="#ff3333" 
-                  fontSize="8"
+                  fontSize="10"
                   fontWeight="bold"
                 >
                   CB-{childIndex + 1}

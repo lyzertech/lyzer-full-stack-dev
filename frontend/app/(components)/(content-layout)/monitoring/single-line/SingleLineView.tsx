@@ -834,9 +834,9 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
     const calculatePositions = () => {
       const positioned: ElectricalNode[] = []
       const startY = 120
-      const parentSpacing = 500 // Increased spacing between parents
-      const childSpacing = 150 // Increased spacing between children
-      const levelHeight = 180 // Increased vertical spacing
+      const parentSpacing = 650 // Increased spacing between parents
+      const childSpacing = 200 // Increased spacing between children
+      const levelHeight = 250 // Increased vertical spacing
 
       nodes.forEach((parent, parentIndex) => {
         const parentX = 250 + parentIndex * parentSpacing
@@ -892,12 +892,12 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
           const childNode = allNodes.find((n) => n.id === child.id)
           if (childNode && node.position && childNode.position) {
             const startX = node.position.x
-            const startY = node.position.y + 30
+            const startY = node.position.y + 45  // Start further below device name
             const endX = childNode.position.x
-            const endY = childNode.position.y - 40
+            const endY = childNode.position.y - 60  // End further above child device
             
-            // Calculate midpoint for angular path
-            const midY = startY + (endY - startY) / 2
+            // Calculate horizontal line position - moved lower to avoid device names
+            const midY = startY + (endY - startY) / 2 + 30  // Push horizontal line lower
             
             // Vertical line from parent down
             connections.push(
@@ -1154,11 +1154,11 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
             {node.position && <NodeComponent node={node} x={node.position.x} y={node.position.y} />}
             {node.position && node.data && (
               <>
-                {/* Connection line from node to metrics - much shorter distance */}
+                {/* Connection line from node to metrics - longer distance to avoid overlap */}
                 <line
-                  x1={node.position.x + 10}
+                  x1={node.position.x + 15}
                   y1={node.position.y}
-                  x2={node.position.x + 30}
+                  x2={node.position.x + 50}
                   y2={node.position.y}
                   stroke="#00d4ff"
                   strokeWidth="2"
@@ -1167,7 +1167,7 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
                 />
                 {/* Connection point on node */}
                 <circle
-                  cx={node.position.x + 10}
+                  cx={node.position.x + 15}
                   cy={node.position.y}
                   r="2"
                   fill="#00d4ff"
@@ -1176,15 +1176,15 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
                 />
                 {/* Connection point on metrics box */}
                 <circle
-                  cx={node.position.x + 10}
+                  cx={node.position.x + 50}
                   cy={node.position.y}
                   r="2"
                   fill="#00d4ff"
                   stroke="#fff"
                   strokeWidth="0.5"
                 />
-                {/* Metrics box positioned much closer */}
-                <DataDisplay x={node.position.x + 70} y={node.position.y} data={node.data} />
+                {/* Metrics box positioned much further away to avoid overlap */}
+                <DataDisplay x={node.position.x + 130} y={node.position.y} data={node.data} />
               </>
             )}
           </g>

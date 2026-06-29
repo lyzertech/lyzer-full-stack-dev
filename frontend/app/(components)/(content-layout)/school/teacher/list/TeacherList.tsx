@@ -5,6 +5,7 @@ import Seo from '@/shared/layouts-components/seo/seo'
 import React, { Fragment, useEffect, useState } from 'react'
 import { Button, Card, Col, Form, Modal, Row } from 'react-bootstrap'
 import ListTable, { Teacher } from './ListTable'
+import { apiClient } from '@/lib/api-client'
 
 interface TeacherListProps {}
 
@@ -28,13 +29,10 @@ const TeacherList: React.FC<TeacherListProps> = () => {
   useEffect(() => {
     const fetchInitial = async () => {
       try {
-        const res = await fetch('/api/v1/teachers', {
-          method: 'GET',
-          cache: 'no-store',
-        })
-        if (!res.ok) return
-        const json = await res.json()
-        setTeachers(json)
+        const { data } = await apiClient.get('/school/teachers')
+        if (Array.isArray(data)) {
+          setTeachers(data)
+        }
       } catch (e) {
         console.error(e)
       }
@@ -69,17 +67,8 @@ const TeacherList: React.FC<TeacherListProps> = () => {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/v1/teachers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error || 'Failed to save teacher')
-      }
-      const created: Teacher = await res.json()
-      setTeachers((prev) => [...prev, created])
+      const { data: created } = await apiClient.post('/school/teachers', form)
+      setTeachers((prev) => [...prev, created as Teacher])
       setShowModal(false)
       setForm({
         name: '',

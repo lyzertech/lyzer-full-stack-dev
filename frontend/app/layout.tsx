@@ -79,7 +79,7 @@ const RootLayout = ({ children, }: any) => {
     >
       <head>
         <title>
-          Vyzor NextJs App-Router Typescript React Bootstrap Admin Dashboard Template
+          LyZer
         </title>
         <meta
           name="keywords"

@@ -48,7 +48,7 @@ const GradesPage: React.FC = () => {
 
   async function fetchTeachers() {
     try {
-      const res = await fetch('/api/v1/teachers', { cache: 'no-store' })
+      const res = await fetch('/api/v1/school/teachers', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load teachers')
       const data = await res.json()
       setTeachers(data)

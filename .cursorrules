@@ -28,3 +28,40 @@ When adding a new feature for a specific module (e.g., `Finance`, `Sales`, `Scho
 4. **Requests/Services**: Same pattern. Keep everything contained within the Module folder.
 
 By following these rules, the project stays decoupled, scalable, and easy to navigate!
+
+---
+
+## 🤖 AI WORKFLOW BEHAVIOR RULES
+
+### ⚡ AUTOMATIC DOCUMENTATION CHECK
+**Before creating ANY new page, component, or feature, you MUST:**
+
+1. **Always check existing rules first** without being asked:
+   - Read `frontend/docs/NAMING_CONVENTIONS.md` for file/folder naming
+   - Read `frontend/docs/UI_RULES.md` for UI patterns and structure
+   - Check existing similar pages in the same module for consistency
+
+2. **Auto-apply the rules** in your implementation:
+   - Use correct folder structure: `app/(components)/(content-layout)/[module]/[feature]/`
+   - Follow naming conventions (kebab-case folders, PascalCase components)
+   - Include proper `Seo` and `Pageheader` components
+   - Use consistent Card structure and button styles
+   - Follow the modular backend architecture
+
+3. **Proactively mention** which rules you're following:
+   - "Following the UI_RULES.md, I'll include Seo and Pageheader..."
+   - "According to NAMING_CONVENTIONS.md, using kebab-case for folders..."
+   - "Per .cursorrules, placing this in app/Modules/[Module]/ structure..."
+
+### 🎯 WORKFLOW PATTERN
+```
+User Request: "Buat page baru untuk inventory"
+AI Response: 
+1. "Checking existing rules and documentation first..."
+2. [Auto-reads relevant .md files]
+3. "Following UI_RULES.md and NAMING_CONVENTIONS.md..."
+4. [Implements with correct patterns]
+5. "Created following the established patterns: [list applied rules]"
+```
+
+**This ensures consistency without repetitive explanations from the user!**

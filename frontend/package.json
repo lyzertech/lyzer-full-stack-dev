@@ -1,6 +1,6 @@
 {
-  "name": "vyzor",
-  "version": "0.1.0",
+  "name": "LyZer",
+  "version": "0.10.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -18,7 +18,13 @@
     "prisma:setup-migrations": "node scripts/setup_prisma_migrations.js",
     "postcss": "sass ./public/assets/scss/style.scss ./public/assets/css/style.css && postcss ./public/assets/css/style.css -o ./public/assets/css/style.css",
     "sass": "sass ./public/assets/scss/:./public/assets/css/",
-    "sass-min": "sass ./public/assets/scss/:./public/assets/css/ --style compressed"
+    "sass-min": "sass ./public/assets/scss/:./public/assets/css/ --style compressed",
+    "generate:module": "node ../workflow-automation.js --module",
+    "generate:backend": "node ../workflow-automation.js --backend",
+    "generate:frontend": "node ../workflow-automation.js --frontend",
+    "generate:page": "node ../workflow-automation.js --frontend",
+    "lyzer:help": "node ../workflow-automation.js",
+    "lyzer:docs": "echo '📚 Check frontend/docs/ for all documentation and rules'"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

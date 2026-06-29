@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tables'
 import SpkBadge from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-badge'
 import Image from 'next/image'
+import { apiClient } from '@/lib/api-client'
 
 export type Teacher = {
   id: number
@@ -39,22 +40,18 @@ const JobsTable: React.FC<{ teachers?: Teacher[] }> = ({ teachers }) => {
     const fetchTeachers = async () => {
       setLoading(true)
       try {
-        const res = await fetch('/api/v1/teachers', {
-          method: 'GET',
-          cache: 'no-store',
-        })
+        const { data } = await apiClient.get('/school/teachers')
 
-        if (!res.ok) {
-          throw new Error(`Request failed: ${res.status}`)
-        }
-
-        const json = await res.json()
-        if (Array.isArray(json)) {
-            setData(json)
+        if (Array.isArray(data)) {
+          setData(data)
         } else {
-            console.error('API did not return an array:', json)
-            setData([])
-            setError(json?.error || json?.message || 'Invalid API response format')
+          console.error('API did not return an array:', data)
+          setData([])
+          setError(
+            (typeof data === 'object' && data !== null && ('error' in data || 'message' in data))
+              ? String((data as { error?: string; message?: string }).error ?? (data as { message?: string }).message)
+              : 'Invalid API response format'
+          )
         }
       } catch (err: any) {
         console.error(err)
@@ -73,11 +70,9 @@ const JobsTable: React.FC<{ teachers?: Teacher[] }> = ({ teachers }) => {
     // fetch school settings for header
     let schoolName = 'School Name'
     try {
-      const resS = await fetch('/api/v1/school/settings', { cache: 'no-store' })
-      if (resS.ok) {
-        const sdata = await resS.json()
-        schoolName = sdata?.school_name || sdata?.short_name || schoolName
-      }
+      const { data: sdata } = await apiClient.get('/school/settings')
+      const settings = sdata as { school_name?: string; short_name?: string } | null
+      schoolName = settings?.school_name || settings?.short_name || schoolName
     } catch (e) {
       console.error('Failed to fetch school settings', e)
     }

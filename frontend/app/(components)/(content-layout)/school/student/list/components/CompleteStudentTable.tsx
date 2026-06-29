@@ -5,6 +5,7 @@ import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tab
 import { Button } from 'react-bootstrap'
 import StudentIDCard from './StudentIDCard'
 import BulkAssignModal from './BulkAssignModal'
+import { apiClient } from '@/lib/api-client'
 
 interface Props {
   students: any[]
@@ -28,10 +29,10 @@ const CompleteStudentTable: React.FC<Props> = ({
 
   React.useEffect(() => {
     let mounted = true
-    fetch('/api/v1/school/grades', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!mounted) return
+    apiClient
+      .get('/school/grades')
+      .then(({ data }) => {
+        if (!mounted || !Array.isArray(data)) return
         const gMap = new Map<number, string>()
         const rMap = new Map<number, string>()
         for (const r of data) {

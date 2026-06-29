@@ -124,7 +124,7 @@ const LessonTimetableAdmin: React.FC = () => {
       setTeachersLoading(true)
       setTeachersError(null)
       try {
-        const res = await fetch('/api/v1/teachers', {
+        const res = await fetch('/api/v1/school/teachers', {
           method: 'GET',
           cache: 'no-store',
         })

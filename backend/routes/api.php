@@ -28,3 +28,8 @@ Route::middleware(['api', 'auth.session'])
 Route::middleware(['api', 'auth.session'])
     ->prefix('v1/vehicle')
     ->group(app_path('Modules/Vehicle/routes.php'));
+
+// ─── School (authenticated) ─────────────────────────────────────────────────
+Route::middleware(['api', 'auth.session'])
+    ->prefix('v1/school')
+    ->group(app_path('Modules/School/routes.php'));

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tables'
+import { apiClient } from '@/lib/api-client'
 
 interface Props {
   students: any[]
@@ -14,10 +15,10 @@ const SimpleStudentTable: React.FC<Props> = ({ students, loading }) => {
 
   React.useEffect(() => {
     let mounted = true
-    fetch('/api/v1/school/grades', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!mounted) return
+    apiClient
+      .get('/school/grades')
+      .then(({ data }) => {
+        if (!mounted || !Array.isArray(data)) return
         const gMap = new Map<number, string>()
         const rMap = new Map<number, string>()
         for (const r of data) {

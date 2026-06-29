@@ -31,6 +31,27 @@ const formatCurrencyWithSpaces = (amount: unknown): string => {
   return `${spacedInteger}.${decimalPart}`
 }
 
+const formatAmountInput = (value: string): string => {
+  const hasTrailingDot = value.endsWith('.')
+  const [integerPart, ...decimalParts] = value.split('.')
+  const decimalPart = decimalParts.join('').slice(0, 2)
+  const spacedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+
+  if (decimalParts.length > 0) {
+    if (decimalPart === '' && hasTrailingDot) {
+      return `${spacedInteger}.`
+    }
+    return `${spacedInteger}.${decimalPart}`
+  }
+
+  return spacedInteger
+}
+
+const parseAmountInput = (value: string): number => {
+  const cleaned = value.replace(/\s/g, '')
+  return parseFloat(cleaned) || 0
+}
+
 const TransactionsPage: React.FC = () => {
   const { isAuthenticated, loading: authLoading } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -46,6 +67,7 @@ const TransactionsPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [amountInput, setAmountInput] = useState('')
   const [form, setForm] = useState({
     account_id: 0,
     transfer_to_account_id: 0,
@@ -84,6 +106,7 @@ const TransactionsPage: React.FC = () => {
 
   const handleOpenModal = (type: 'Income' | 'Expense' | 'Transfer' = 'Expense') => {
     setTransactionType(type)
+    setAmountInput('')
     setForm({
       account_id: accounts.length > 0 ? accounts[0].id : 0,
       transfer_to_account_id: 0,
@@ -106,20 +129,46 @@ const TransactionsPage: React.FC = () => {
     const { name, value } = e.target
     setForm((prev) => ({
       ...prev,
-      [name]: name === 'amount' ? parseFloat(value) || 0 : value,
+      [name]: value,
     }))
+  }
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+
+    if (raw === '') {
+      setAmountInput('')
+      setForm((prev) => ({ ...prev, amount: 0 }))
+      return
+    }
+
+    const cleaned = raw.replace(/\s/g, '')
+    if (!/^\d*\.?\d{0,2}$/.test(cleaned)) {
+      return
+    }
+
+    setAmountInput(formatAmountInput(cleaned))
+    setForm((prev) => ({ ...prev, amount: parseAmountInput(cleaned) }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     setFormError(null)
+
+    const amount = parseAmountInput(amountInput)
+    if (amount <= 0) {
+      setFormError('Amount must be greater than 0')
+      setSubmitting(false)
+      return
+    }
+
     try {
       if (transactionType === 'Transfer') {
         await transferBetweenAccounts(
           form.account_id,
           form.transfer_to_account_id,
-          form.amount,
+          amount,
           form.description,
           form.transaction_date
         )
@@ -128,7 +177,7 @@ const TransactionsPage: React.FC = () => {
           transaction_type: transactionType,
           account_id: form.account_id,
           category_id: form.category_id || null,
-          amount: form.amount,
+          amount,
           description: form.description || null,
           reference_number: form.reference_number || null,
           transaction_date: form.transaction_date,
@@ -477,12 +526,12 @@ const TransactionsPage: React.FC = () => {
                 <Form.Group className="mb-3">
                   <Form.Label>Amount *</Form.Label>
                   <Form.Control
-                    type="number"
-                    step="0.01"
-                    min="0.01"
+                    type="text"
+                    inputMode="decimal"
                     name="amount"
-                    value={form.amount}
-                    onChange={handleChange}
+                    value={amountInput}
+                    onChange={handleAmountChange}
+                    placeholder="0"
                     required
                   />
                 </Form.Group>

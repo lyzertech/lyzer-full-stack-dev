@@ -186,14 +186,6 @@ function pushEnergyNulls(arrays: {
   arrays.es.push({ time: slot, value: null })
 }
 
-/** Last bucketed row of the previous day — baseline for 00:00 consumption. */
-function lastBucketOfDay(rows: AcuvimRow[]): AcuvimRow | null {
-  if (rows.length === 0) return null
-  return [...rows].sort(
-    (a, b) => new Date(a.Timestamp).getTime() - new Date(b.Timestamp).getTime(),
-  )[rows.length - 1]
-}
-
 function buildEnergyCharts(
   rows: AcuvimRow[],
   slots: string[],
@@ -318,16 +310,7 @@ function todayStr() {
   return `${y}-${m}-${day}` // YYYY-MM-DD in local timezone
 }
 
-function prevDateStr(date: string): string {
-  const d = new Date(`${date}T12:00:00`)
-  d.setDate(d.getDate() - 1)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function buildDataParams(
+function buildAnalysisDayParams(
   deviceName: string,
   deviceSerial: string | undefined,
   date: string,
@@ -335,15 +318,32 @@ function buildDataParams(
 ) {
   const params = new URLSearchParams({
     device_name:  deviceName,
-    date_from:    date,
-    date_to:      date,
+    date,
     interval_min: String(interval),
-    page:         '1',
   })
   if (deviceSerial) {
     params.set('device_serial', deviceSerial)
   }
   return params
+}
+
+const ANALYSIS_CACHE_TTL_MS = 45_000
+
+interface AnalysisDayCacheEntry {
+  rows: AcuvimRow[]
+  energyBaseline: AcuvimRow | null
+  fetchedAt: number
+}
+
+const analysisDayCache = new Map<string, AnalysisDayCacheEntry>()
+
+function analysisDayCacheKey(
+  deviceName: string,
+  deviceSerial: string | undefined,
+  date: string,
+  interval: number,
+): string {
+  return `${deviceName}|${deviceSerial ?? ''}|${date}|${interval}`
 }
 
 const PowerAnalysisDashboard: React.FC = () => {
@@ -358,25 +358,41 @@ const PowerAnalysisDashboard: React.FC = () => {
   const [loading, setLoading]              = useState(false)
   const [error, setError]                  = useState<string | null>(null)
 
-  // Fetch bucketed records for device + date + interval (server-side aggregation)
+  // Fetch bucketed day + previous baseline; cache per device/date/interval for 45s
   const fetchData = useCallback(async (
     deviceName: string,
     deviceSerial: string | undefined,
     date: string,
     interval: number,
+    force = false,
   ) => {
+    const cacheKey = analysisDayCacheKey(deviceName, deviceSerial, date, interval)
+    const cached = analysisDayCache.get(cacheKey)
+    const cacheValid = cached && Date.now() - cached.fetchedAt < ANALYSIS_CACHE_TTL_MS
+
+    if (!force && cacheValid) {
+      setRows(cached.rows)
+      setEnergyBaseline(cached.energyBaseline)
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
-      const prevDate = prevDateStr(date)
-      const [todayRes, prevRes] = await Promise.all([
-        apiClient.get(`/monitoring/acuvim/data?${buildDataParams(deviceName, deviceSerial, date, interval)}`),
-        apiClient.get(`/monitoring/acuvim/data?${buildDataParams(deviceName, deviceSerial, prevDate, interval)}`),
-      ])
-      const todayRows = Array.isArray(todayRes.data?.data) ? todayRes.data.data : []
-      const prevRows = Array.isArray(prevRes.data?.data) ? prevRes.data.data : []
+      const res = await apiClient.get(
+        `/monitoring/acuvim/analysis-day?${buildAnalysisDayParams(deviceName, deviceSerial, date, interval)}`,
+      )
+      const todayRows = Array.isArray(res.data?.data) ? res.data.data : []
+      const baseline = res.data?.previous_baseline ?? null
+      analysisDayCache.set(cacheKey, {
+        rows: todayRows,
+        energyBaseline: baseline,
+        fetchedAt: Date.now(),
+      })
       setRows(todayRows)
-      setEnergyBaseline(lastBucketOfDay(prevRows))
+      setEnergyBaseline(baseline)
     } catch (e: any) {
       setError(e.message ?? 'Network error')
       setEnergyBaseline(null)
@@ -410,6 +426,7 @@ const PowerAnalysisDashboard: React.FC = () => {
         selectedDevice.meta!.device_code,
         selectedDate,
         intervalMin,
+        true,
       ),
       30_000
     )

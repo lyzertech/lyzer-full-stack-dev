@@ -51,6 +51,17 @@ const DevicesPage = () => {
   const [organizations, setOrganizations] = useState<any[]>([])
   const [facilities, setFacilities] = useState<any[]>([])
   const [devices, setDevices] = useState<any[]>([])
+  const [deviceMeta, setDeviceMeta] = useState({
+    total: 0,
+    lastPage: 1,
+    stats: {
+      total: 0,
+      online: 0,
+      offline: 0,
+      inactive: 0,
+      electricity: 0,
+    },
+  })
   const [loading, setLoading] = useState(true)
 
   // Scan Network state
@@ -154,23 +165,43 @@ const DevicesPage = () => {
     }
   }
 
-  const fetchDevices = async () => {
+  const fetchDevices = async (pageOverride?: number) => {
     if (!selectedOrg) return
     if (facilities.length > 0 && !selectedFacility && !preselectedFacilityId) {
       return
     }
+    const page = pageOverride ?? currentPage
     setLoading(true)
     try {
-      let url = `/monitoring/devices?organization_id=${selectedOrg}`
-      // Prefer direct facility_id from query param, else match by name
+      const params = new URLSearchParams({
+        organization_id: selectedOrg,
+        page: String(page),
+        per_page: String(itemsPerPage),
+      })
       if (preselectedFacilityId) {
-        url += `&facility_id=${preselectedFacilityId}`
+        params.set('facility_id', preselectedFacilityId)
       } else if (selectedFacility !== 'All') {
         const fac = facilities.find((f) => f.name === selectedFacility)
-        if (fac) url += `&facility_id=${fac.id}`
+        if (fac) params.set('facility_id', String(fac.id))
       }
-      const res = await apiClient.get(url)
-      setDevices(Array.isArray(res.data) ? res.data : [])
+      if (searchQuery.trim()) {
+        params.set('search', searchQuery.trim())
+      }
+      const res = await apiClient.get(`/monitoring/devices?${params}`)
+      const payload = res.data ?? {}
+      setDevices(Array.isArray(payload.data) ? payload.data : [])
+      const meta = payload.meta ?? {}
+      setDeviceMeta({
+        total: meta.total ?? 0,
+        lastPage: meta.last_page ?? 1,
+        stats: meta.stats ?? {
+          total: 0,
+          online: 0,
+          offline: 0,
+          inactive: 0,
+          electricity: 0,
+        },
+      })
     } catch (error) {
       console.error('Failed to fetch devices:', error)
     } finally {
@@ -192,7 +223,16 @@ const DevicesPage = () => {
     if (selectedOrg) {
       fetchDevices()
     }
-  }, [selectedOrg, selectedFacility, preselectedFacilityId, facilities])
+  }, [selectedOrg, selectedFacility, preselectedFacilityId, facilities, currentPage])
+
+  useEffect(() => {
+    if (!selectedOrg) return
+    const timer = window.setTimeout(() => {
+      setCurrentPage(1)
+      fetchDevices(1)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [searchQuery])
 
   // When the facility dropdown is changed manually, clear the preselected id
   const handleFacilityChange = (value: string) => {
@@ -201,55 +241,24 @@ const DevicesPage = () => {
     setCurrentPage(1)
   }
 
-  // Filtering Logic
-  const filteredDevices = useMemo(() => {
-    return devices.filter((d) => {
-      const matchesSearch =
-        d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.ip_address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.model?.toLowerCase().includes(searchQuery.toLowerCase())
-      return matchesSearch
-    })
-  }, [devices, searchQuery])
+  const deviceStats = useMemo(() => {
+    const stats = deviceMeta.stats
+    return {
+      total: stats.total,
+      online: stats.online,
+      offline: stats.offline,
+      dormant: stats.inactive,
+      electricity: stats.electricity,
+      water: 0,
+      gas: 0,
+      activeAlerts: 0,
+    }
+  }, [deviceMeta.stats])
 
-  // Facility Overview Stats
   const currentFacility = useMemo(() => {
     if (selectedFacility === 'All') return null
     return facilities.find((f) => f.name === selectedFacility) || null
   }, [facilities, selectedFacility])
-
-  const deviceStats = useMemo(() => {
-    const total = filteredDevices.length
-    const online = filteredDevices.filter((d) => d.status === 'Online').length
-    const offline = filteredDevices.filter(
-      (d) => d.status === 'Offline' || d.status === 'Warning',
-    ).length
-    const dormant = filteredDevices.filter(
-      (d) => d.status === 'Inactive' || d.status === 'Dormant',
-    ).length
-
-    // Assuming type parsing or using raw device type
-    const electricity = filteredDevices.filter(
-      (d) =>
-        ['Meter', 'Gateway', 'Sensor', 'Acuvim'].includes(
-          d.device_type || '',
-        ) || !d.device_type,
-    ).length
-    const water = 0
-    const gas = 0
-    const activeAlerts = 0
-
-    return {
-      total,
-      online,
-      offline,
-      dormant,
-      electricity,
-      water,
-      gas,
-      activeAlerts,
-    }
-  }, [filteredDevices])
 
   // Form State
   const [showAddModal, setShowAddModal] = useState(false)
@@ -479,11 +488,11 @@ const DevicesPage = () => {
     setSelectedScanKeys(new Set())
   }
 
-  // Pagination Logic
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredDevices.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredDevices.length / itemsPerPage)
+  // Pagination (server-side)
+  const totalPages = deviceMeta.lastPage
+  const indexOfFirstItem = devices.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0
+  const indexOfLastItem = Math.min(currentPage * itemsPerPage, deviceMeta.total)
+  const currentItems = devices
 
   const getStatusBadge = (status: string) => {
     const dot = (color: string) => (
@@ -1162,9 +1171,8 @@ const DevicesPage = () => {
             </Card.Body>
             <Card.Footer className="border-top-0 d-flex align-items-center justify-content-between py-3">
               <span className="text-muted fs-12 fw-medium">
-                Showing {currentItems.length > 0 ? indexOfFirstItem + 1 : 0} to{' '}
-                {Math.min(indexOfLastItem, filteredDevices.length)} of{' '}
-                {filteredDevices.length} devices
+                Showing {indexOfFirstItem} to {indexOfLastItem} of{' '}
+                {deviceMeta.total} devices
               </span>
               <Pagination className="pagination-sm mb-0 shadow-sm">
                 <Pagination.Prev

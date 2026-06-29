@@ -5,12 +5,20 @@ namespace App\Modules\Monitoring\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Monitoring\Concerns\ResolvesAuthRole;
 use App\Modules\Monitoring\Models\Organization;
+use App\Modules\Monitoring\Services\DeviceStatusResolver;
+use App\Modules\Monitoring\Services\MonitoringCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class OrganizationController extends Controller
 {
     use ResolvesAuthRole;
+
+    public function __construct(
+        private readonly DeviceStatusResolver $statusResolver,
+    ) {}
+
     public function index()
     {
         return response()->json(Organization::withCount(['facilities', 'devices'])->get());
@@ -18,11 +26,24 @@ class OrganizationController extends Controller
 
     public function deviceTree()
     {
-        return response()->json(
-            Organization::with([
-                'facilities.devices' => fn ($q) => $q->orderBy('device_code'),
-            ])->get()
+        $data = Cache::remember(
+            MonitoringCache::deviceTreeKey(),
+            MonitoringCache::TTL_SECONDS,
+            function () {
+                $organizations = Organization::with([
+                    'facilities.devices' => fn ($q) => $q->orderBy('device_code'),
+                ])->get();
+
+                $devices = $organizations
+                    ->flatMap(fn ($org) => $org->facilities->flatMap->devices);
+
+                $this->statusResolver->applyToCollection($devices);
+
+                return $organizations->toArray();
+            }
         );
+
+        return response()->json($data);
     }
 
     public function store(Request $request)
@@ -43,6 +64,8 @@ class OrganizationController extends Controller
         $validated['slug'] = Str::slug($validated['name']);
 
         $org = Organization::create($validated);
+        MonitoringCache::bump();
+
         return response()->json($org, 201);
     }
 
@@ -77,6 +100,8 @@ class OrganizationController extends Controller
     {
         $org = Organization::findOrFail($id);
         $org->delete();
+        MonitoringCache::bump();
+
         return response()->json(null, 204);
     }
 }

@@ -6,6 +6,7 @@ import React, { Fragment, useEffect, useState } from 'react'
 import { Button, Card, Col, Row, Modal, Form } from 'react-bootstrap'
 import SimpleStudentTable from './components/SimpleStudentTable'
 import CompleteStudentTable from './components/CompleteStudentTable'
+import { apiClient } from '@/lib/api-client'
 
 const StudentListPage: React.FC = () => {
   const [simpleStudents, setSimpleStudents] = useState<any[]>([])
@@ -28,27 +29,13 @@ const StudentListPage: React.FC = () => {
     setLoadingSimple(true)
     setSimpleError(null)
     try {
-      const res = await fetch('/api/v1/school/students?simple=1', {
-        cache: 'no-store',
-      })
-      if (!res.ok) {
-        let msg = res.statusText
-        try {
-          const j = await res.json()
-          msg = j?.error || JSON.stringify(j)
-        } catch (e) {
-          msg = await res.text().catch(() => res.statusText)
-        }
-        console.error('fetchSimpleStudents failed:', msg)
-        setSimpleError(msg || 'Failed to fetch simple students')
-        return
-      }
-      const data = await res.json()
+      const { data } = await apiClient.get('/school/students?simple=1')
       if (Array.isArray(data)) {
-          setSimpleStudents(data)
+        setSimpleStudents(data)
       } else {
-          setSimpleError(data?.error || data?.message || 'Invalid API response format')
-          setSimpleStudents([])
+        const errData = data as { error?: string; message?: string } | null
+        setSimpleError(errData?.error || errData?.message || 'Invalid API response format')
+        setSimpleStudents([])
       }
     } catch (err: any) {
       console.error('fetchSimpleStudents error:', err)
@@ -63,27 +50,13 @@ const StudentListPage: React.FC = () => {
     setLoadingComplete(true)
     setCompleteError(null)
     try {
-      const res = await fetch('/api/v1/school/students?simple=0', {
-        cache: 'no-store',
-      })
-      if (!res.ok) {
-        let msg = res.statusText
-        try {
-          const j = await res.json()
-          msg = j?.error || JSON.stringify(j)
-        } catch (e) {
-          msg = await res.text().catch(() => res.statusText)
-        }
-        console.error('fetchCompleteStudents failed:', msg)
-        setCompleteError(msg || 'Failed to fetch complete students')
-        return
-      }
-      const data = await res.json()
+      const { data } = await apiClient.get('/school/students?simple=0')
       if (Array.isArray(data)) {
-          setCompleteStudents(data)
+        setCompleteStudents(data)
       } else {
-          setCompleteError(data?.error || data?.message || 'Invalid API response format')
-          setCompleteStudents([])
+        const errData = data as { error?: string; message?: string } | null
+        setCompleteError(errData?.error || errData?.message || 'Invalid API response format')
+        setCompleteStudents([])
       }
     } catch (err: any) {
       console.error('fetchCompleteStudents error:', err)
@@ -104,15 +77,7 @@ const StudentListPage: React.FC = () => {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/v1/school/students', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error || 'Failed to create student')
-      }
+      await apiClient.post('/school/students', form)
       setShowModal(false)
       setForm({ name: '', gender: 'Male', nis: '' })
       // refresh both lists

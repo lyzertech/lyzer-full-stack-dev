@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Button, Col, Form, Modal, Row } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 interface Props {
   show: boolean
@@ -27,10 +28,13 @@ const BulkAssignModal: React.FC<Props> = ({
     if (!show) return
     setError(null)
     // fetch grades and nested rooms
-    fetch('/api/v1/school/grades', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        // aggregate grades with rooms
+    apiClient
+      .get('/school/grades')
+      .then(({ data }) => {
+        if (!Array.isArray(data)) {
+          setGrades([])
+          return
+        }
         const map = new Map<number, any>()
         for (const r of data) {
           const id = r.id
@@ -60,19 +64,11 @@ const BulkAssignModal: React.FC<Props> = ({
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/v1/school/students/bulk-assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentIds,
-          grade: selectedGrade || null,
-          room: selectedRoom || null,
-        }),
+      await apiClient.post('/school/students/bulk-assign', {
+        studentIds,
+        grade: selectedGrade || null,
+        room: selectedRoom || null,
       })
-      if (!res.ok) {
-        const j = await res.json().catch(() => null)
-        throw new Error(j?.error || 'Bulk assign failed')
-      }
       onHide()
       onSaved()
     } catch (err: any) {

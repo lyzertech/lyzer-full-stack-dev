@@ -1,0 +1,284 @@
+name: Lyzer CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18.x'
+  PHP_VERSION: '8.1'
+
+jobs:
+  # Frontend Testing & Build
+  frontend-tests:
+    runs-on: ubuntu-latest
+    name: 🎨 Frontend Tests & Build
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: 📦 Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: 🔍 Run ESLint
+      working-directory: ./frontend
+      run: npm run lint
+
+    - name: 🧪 Run frontend tests
+      working-directory: ./frontend
+      run: npm run test:ci
+      env:
+        CI: true
+
+    - name: 📊 Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./frontend/coverage/lcov.info
+        flags: frontend
+
+    - name: 🏗️ Build frontend
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: 📤 Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/.next/
+        retention-days: 1
+
+  # Backend Testing
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: 🐘 Backend Tests
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: lyzer_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐘 Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ env.PHP_VERSION }}
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, iconv, json, mbstring
+        tools: composer:v2
+        coverage: xdebug
+
+    - name: 📦 Install backend dependencies
+      working-directory: ./backend
+      run: composer install --no-ansi --no-interaction --no-progress --prefer-dist --optimize-autoloader
+
+    - name: 📋 Copy environment file
+      working-directory: ./backend
+      run: cp .env.example .env
+
+    - name: 🔑 Generate app key
+      working-directory: ./backend
+      run: php artisan key:generate
+
+    - name: 🗄️ Run database migrations
+      working-directory: ./backend
+      run: php artisan migrate --force
+      env:
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: lyzer_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+
+    - name: 🧪 Run backend tests
+      working-directory: ./backend
+      run: vendor/bin/phpunit --coverage-clover=coverage.xml
+
+    - name: 📊 Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+
+  # Architecture Compliance Check
+  architecture-check:
+    runs-on: ubuntu-latest
+    name: 🏗️ Architecture Compliance
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔍 Check modular architecture compliance
+      run: |
+        echo "🔍 Checking backend modular architecture..."
+        
+        # Check for controllers in wrong location
+        WRONG_CONTROLLERS=$(find backend/app/Http/Controllers -name "*.php" 2>/dev/null | grep -v "Controller.php" | wc -l)
+        if [ $WRONG_CONTROLLERS -gt 0 ]; then
+          echo "❌ Found controllers in app/Http/Controllers/. Should be in app/Modules/[ModuleName]/Controllers/"
+          find backend/app/Http/Controllers -name "*.php" | grep -v "Controller.php"
+          exit 1
+        fi
+        
+        # Check for models in wrong location
+        WRONG_MODELS=$(find backend/app/Models -name "*.php" 2>/dev/null | grep -v "User.php" | wc -l)
+        if [ $WRONG_MODELS -gt 0 ]; then
+          echo "❌ Found models in app/Models/. Should be in app/Modules/[ModuleName]/Models/"
+          find backend/app/Models -name "*.php" | grep -v "User.php"
+          exit 1
+        fi
+        
+        echo "✅ Backend architecture compliance check passed!"
+
+    - name: 🎨 Check frontend naming conventions
+      run: |
+        echo "🔍 Checking frontend naming conventions..."
+        
+        # Check for wrong page file names
+        WRONG_PAGES=$(find frontend/app -name "Page.tsx" -o -name "Layout.tsx" | wc -l)
+        if [ $WRONG_PAGES -gt 0 ]; then
+          echo "❌ Found incorrectly named page/layout files. Should be lowercase (page.tsx, layout.tsx)"
+          find frontend/app -name "Page.tsx" -o -name "Layout.tsx"
+          exit 1
+        fi
+        
+        echo "✅ Frontend naming conventions check passed!"
+
+  # Security Scan
+  security-scan:
+    runs-on: ubuntu-latest
+    name: 🔒 Security Scan
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔍 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: 📤 Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: 🔍 Backend security check
+      working-directory: ./backend
+      run: |
+        # Check for common security issues
+        echo "🔍 Checking for potential security issues..."
+        
+        # Check for hardcoded credentials
+        if grep -r "password.*=" --include="*.php" --include="*.env" . | grep -v ".env.example" | grep -v "DB_PASSWORD" | grep -v "password_hash"; then
+          echo "❌ Potential hardcoded passwords found!"
+          exit 1
+        fi
+        
+        # Check for debug mode in production files
+        if grep -r "APP_DEBUG.*=.*true" --include="*.env" . | grep -v ".env.example"; then
+          echo "❌ Debug mode enabled in production files!"
+          exit 1
+        fi
+        
+        echo "✅ Backend security check passed!"
+
+  # Deployment (only on main branch)
+  deploy:
+    needs: [frontend-tests, backend-tests, architecture-check, security-scan]
+    runs-on: ubuntu-latest
+    name: 🚀 Deploy to Staging
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 📥 Download frontend build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/.next/
+
+    - name: 🚀 Deploy to staging
+      run: |
+        echo "🚀 Deploying to staging environment..."
+        # Add your deployment commands here
+        # For example:
+        # - Deploy to Docker registry
+        # - Update Kubernetes manifests
+        # - Deploy to cloud provider
+        # - Run post-deployment tests
+        
+        echo "✅ Deployment to staging completed!"
+
+    - name: 📢 Notify deployment
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        text: |
+          🚀 Deployment Status: ${{ job.status }}
+          📝 Commit: ${{ github.sha }}
+          🌿 Branch: ${{ github.ref }}
+          👤 Author: ${{ github.actor }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Performance Testing
+  performance-test:
+    needs: [frontend-tests, backend-tests]
+    runs-on: ubuntu-latest
+    name: ⚡ Performance Tests
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: 📦 Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: 🏗️ Build application
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: ⚡ Run Lighthouse CI
+      working-directory: ./frontend
+      run: |
+        npm install -g @lhci/cli
+        lhci autorun
+      env:
+        LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+    - name: 📊 Upload performance results
+      uses: actions/upload-artifact@v4
+      with:
+        name: lighthouse-results
+        path: .lighthouseci/

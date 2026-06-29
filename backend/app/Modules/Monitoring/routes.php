@@ -19,4 +19,5 @@ Route::get('acuvim/scan', [AcuvimController::class, 'scan']);
 // Data Retrieval — list distinct device names, or fetch paginated records by device
 Route::get('acuvim/devices', [AcuvimController::class, 'deviceNames']);
 Route::get('acuvim/data',    [AcuvimController::class, 'data']);
+Route::get('acuvim/analysis-day', [AcuvimController::class, 'analysisDay']);
 Route::get('acuvim/daily-energy', [AcuvimController::class, 'dailyEnergy']);

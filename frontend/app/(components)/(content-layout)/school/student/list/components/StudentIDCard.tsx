@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { Modal, Button } from 'react-bootstrap'
 import QRCode from 'qrcode'
+import { apiClient } from '@/lib/api-client'
 
 interface Props {
   show: boolean
@@ -38,12 +39,11 @@ const StudentIDCard: React.FC<Props> = ({
     if (!student?.id) return
     setLoading(true)
     try {
-      const res = await fetch(
-        `/api/v1/school/students/refresh-qr?id=${student.id}`,
-        { method: 'POST' }
+      const { data } = await apiClient.post(
+        `/school/students/refresh-qr?id=${student.id}`
       )
-      const json = await res.json()
-      if (res.ok && json.qr_hash) {
+      const json = data as { qr_hash?: string } | null
+      if (json?.qr_hash) {
         const payload = `student:${student.id}|${json.qr_hash}`
         const url = await QRCode.toDataURL(payload, { margin: 1, scale: 7 })
         setQrDataUrl(url)
@@ -67,11 +67,12 @@ const StudentIDCard: React.FC<Props> = ({
 
   useEffect(() => {
     let mounted = true
-    fetch('/api/v1/school/settings', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
+    apiClient
+      .get('/school/settings')
+      .then(({ data }) => {
         if (!mounted) return
-        setSchoolName(data?.school_name || data?.short_name || 'School Name')
+        const settings = data as { school_name?: string; short_name?: string } | null
+        setSchoolName(settings?.school_name || settings?.short_name || 'School Name')
       })
       .catch((e) => {
         console.error('Failed to load school settings', e)
@@ -88,10 +89,10 @@ const StudentIDCard: React.FC<Props> = ({
       return
     }
     let mounted = true
-    fetch('/api/v1/school/grades', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!mounted) return
+    apiClient
+      .get('/school/grades')
+      .then(({ data }) => {
+        if (!mounted || !Array.isArray(data)) return
         const gMap = new Map<number, string>()
         const rMap = new Map<number, string>()
         for (const r of data) {

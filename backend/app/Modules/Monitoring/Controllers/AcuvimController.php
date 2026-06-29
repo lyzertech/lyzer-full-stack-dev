@@ -3,12 +3,25 @@
 namespace App\Modules\Monitoring\Controllers;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AcuvimController extends Controller
 {
     private const ALLOWED_INTERVALS = [5, 10, 15, 30, 60];
+
+    /** Columns required by the analysis dashboard charts (not full telemetry row). */
+    private const ANALYSIS_COLUMNS = [
+        'Timestamp',
+        'V1', 'V2', 'V3', 'V12', 'V23', 'V31', 'Vnavg_V', 'Vlavg_V',
+        'I1', 'I2', 'I3', 'Iavg_A', 'In',
+        'Freq_Hz',
+        'Psum_kW', 'Qsum_kvar', 'Ssum_kVA',
+        'PF1', 'PF2', 'PF3', 'PF',
+        'EP_IMP_kWh', 'EP_EXP_kWh', 'EQ_IMP_kvarh', 'EQ_EXP_kvarh', 'ES_kVAh',
+        'Ang_Vb', 'Ang_Vc', 'Ang_Ia', 'Ang_Ib', 'Ang_Ic',
+    ];
 
     private function normalizeInterval(int $value): int
     {
@@ -47,6 +60,78 @@ class AcuvimController extends Controller
         usort($values, fn ($a, $b) => strcmp((string) $b->Timestamp, (string) $a->Timestamp));
 
         return $values;
+    }
+
+    private function dayStart(string $date): string
+    {
+        return $date . ' 00:00:00';
+    }
+
+    private function dayEnd(string $date): string
+    {
+        return $date . ' 23:59:59';
+    }
+
+    /**
+     * Fetch one row per time bucket directly in SQL instead of loading the full day.
+     *
+     * @return array<int, object>
+     */
+    private function fetchBucketedRows(
+        string $deviceName,
+        ?string $deviceSerial,
+        ?string $dateFrom,
+        ?string $dateTo,
+        int $intervalMin,
+    ): array {
+        $bucketExpr = 'ROUND((HOUR(`Timestamp`) * 60 + MINUTE(`Timestamp`)) / ?) * ?';
+
+        $bucketQuery = DB::table('monitoring_acuvim')
+            ->selectRaw('MAX(`Timestamp`) as max_ts')
+            ->where('device_name', $deviceName);
+
+        if ($deviceSerial) {
+            $bucketQuery->where('device_serial', $deviceSerial);
+        }
+
+        if ($dateFrom) {
+            $bucketQuery->where('Timestamp', '>=', $this->dayStart($dateFrom));
+        }
+
+        if ($dateTo) {
+            $bucketQuery->where('Timestamp', '<=', $this->dayEnd($dateTo));
+        }
+
+        $bucketQuery->groupByRaw($bucketExpr, [$intervalMin, $intervalMin]);
+
+        $selectColumns = array_map(fn (string $col) => "a.{$col}", self::ANALYSIS_COLUMNS);
+
+        $rows = DB::table('monitoring_acuvim as a')
+            ->joinSub($bucketQuery, 'b', function ($join) {
+                $join->on('a.Timestamp', '=', 'b.max_ts');
+            })
+            ->where('a.device_name', $deviceName)
+            ->when($deviceSerial, fn ($q) => $q->where('a.device_serial', $deviceSerial))
+            ->when($dateFrom, fn ($q) => $q->where('a.Timestamp', '>=', $this->dayStart($dateFrom)))
+            ->when($dateTo, fn ($q) => $q->where('a.Timestamp', '<=', $this->dayEnd($dateTo)))
+            ->orderByDesc('a.Timestamp')
+            ->get($selectColumns);
+
+        return $this->bucketRows($rows, $intervalMin);
+    }
+
+    /**
+     * @param  array<int, object>  $rows
+     */
+    private function lastBucketOfDay(array $rows): ?object
+    {
+        if ($rows === []) {
+            return null;
+        }
+
+        usort($rows, fn ($a, $b) => strcmp((string) $a->Timestamp, (string) $b->Timestamp));
+
+        return $rows[array_key_last($rows)];
     }
 
     /**
@@ -164,33 +249,26 @@ class AcuvimController extends Controller
             'interval_min'  => 'nullable|integer|in:5,10,15,30,60',
         ]);
 
-        $query = DB::table('monitoring_acuvim')
-            ->where('device_name', $request->device_name)
-            ->orderByDesc('Timestamp');
-
-        if ($request->filled('device_serial')) {
-            $query->where('device_serial', $request->device_serial);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('Timestamp', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('Timestamp', '<=', $request->date_to);
-        }
+        $deviceName = $request->device_name;
+        $deviceSerial = $request->filled('device_serial') ? $request->device_serial : null;
+        $dateFrom = $request->date_from;
+        $dateTo = $request->date_to;
 
         if ($request->filled('interval_min')) {
             $intervalMin = $this->normalizeInterval((int) $request->interval_min);
-            $all = $query->get();
-            $bucketed = $this->bucketRows($all, $intervalMin);
+            $bucketed = $this->fetchBucketedRows(
+                $deviceName,
+                $deviceSerial,
+                $dateFrom,
+                $dateTo,
+                $intervalMin,
+            );
             $count = count($bucketed);
 
             return response()->json([
                 'data'         => $bucketed,
                 'interval_min' => $intervalMin,
                 'meta'         => [
-                    'raw_count'    => $all->count(),
                     'bucket_count' => $count,
                 ],
                 'current_page' => 1,
@@ -200,10 +278,78 @@ class AcuvimController extends Controller
             ]);
         }
 
+        $query = DB::table('monitoring_acuvim')
+            ->where('device_name', $deviceName)
+            ->orderByDesc('Timestamp');
+
+        if ($deviceSerial) {
+            $query->where('device_serial', $deviceSerial);
+        }
+
+        if ($dateFrom) {
+            $query->where('Timestamp', '>=', $this->dayStart($dateFrom));
+        }
+
+        if ($dateTo) {
+            $query->where('Timestamp', '<=', $this->dayEnd($dateTo));
+        }
+
         $perPage = min((int) ($request->per_page ?? 50), 500);
         $result = $query->paginate($perPage);
 
         return response()->json($result);
+    }
+
+    /**
+     * Analysis dashboard: bucketed rows for one day plus previous-day baseline in one call.
+     *
+     * GET /api/v1/monitoring/acuvim/analysis-day
+     *   ?device_name=METER_01
+     *   &device_serial=F-019   (optional)
+     *   &date=2025-01-15
+     *   &interval_min=5
+     */
+    public function analysisDay(Request $request)
+    {
+        $request->validate([
+            'device_name'   => 'required|string|max:255',
+            'device_serial' => 'nullable|string|max:100',
+            'date'          => 'required|date',
+            'interval_min'  => 'nullable|integer|in:5,10,15,30,60',
+        ]);
+
+        $deviceName = $request->device_name;
+        $deviceSerial = $request->filled('device_serial') ? $request->device_serial : null;
+        $date = $request->date;
+        $intervalMin = $this->normalizeInterval((int) ($request->interval_min ?? 5));
+        $previousDate = Carbon::parse($date)->subDay()->toDateString();
+
+        $todayRows = $this->fetchBucketedRows(
+            $deviceName,
+            $deviceSerial,
+            $date,
+            $date,
+            $intervalMin,
+        );
+
+        $previousRows = $this->fetchBucketedRows(
+            $deviceName,
+            $deviceSerial,
+            $previousDate,
+            $previousDate,
+            $intervalMin,
+        );
+
+        return response()->json([
+            'data' => $todayRows,
+            'previous_baseline' => $this->lastBucketOfDay($previousRows),
+            'interval_min' => $intervalMin,
+            'date' => $date,
+            'previous_date' => $previousDate,
+            'meta' => [
+                'bucket_count' => count($todayRows),
+            ],
+        ]);
     }
 
     /**
@@ -248,8 +394,8 @@ class AcuvimController extends Controller
             ->whereNotNull('a.EP_TOTAL_kWh')
             ->whereNotNull('a.device_serial')
             ->where('a.device_serial', '!=', '')
-            ->whereDate('a.Timestamp', '>=', $request->date_from)
-            ->whereDate('a.Timestamp', '<=', $request->date_to)
+            ->where('a.Timestamp', '>=', $this->dayStart($request->date_from))
+            ->where('a.Timestamp', '<=', $this->dayEnd($request->date_to))
             ->selectRaw(
                 'DATE(a.Timestamp) as date,
                 d.device_code,

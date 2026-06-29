@@ -98,8 +98,10 @@ const SignIn = () => {
           router.push('/finance/dashboard');
         } else if (user && user.role === 'school') {
           router.push('/school/dashboard');
+        } else if (user && user.role === 'monitoring') {
+          router.push('/monitoring/analysis');
         } else {
-          router.push('/dashboards/sales');
+          router.push('/monitoring/analysis');
         }
       }, 1000);
     } catch (err: any) {
@@ -125,8 +127,10 @@ const SignIn = () => {
           router.push('/finance/dashboard');
         } else if (user && user.role === 'school') {
           router.push('/school/dashboard');
+        } else if (user && user.role === 'monitoring') {
+          router.push('/monitoring/analysis');
         } else {
-          router.push('/dashboards/sales');
+          router.push('/monitoring/analysis');
         }
       }, 1000);
     } catch (err: any) {

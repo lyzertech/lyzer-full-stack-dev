@@ -87,7 +87,7 @@ class AuthController extends Controller
         if ($token) {
             \Illuminate\Support\Facades\DB::table('auth_user_sessions')
                 ->where('session_token', hash('sha256', $token))
-                ->update(['is_active' => 0]);
+                ->update(['is_active' => false]);
         }
 
         return response()->json(['message' => 'Logged out successfully.']);

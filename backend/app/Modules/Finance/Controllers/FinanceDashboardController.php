@@ -27,7 +27,7 @@ class FinanceDashboardController extends Controller
 
         // Total balance across all active accounts
         $totalBalance = (float) DB::selectOne(
-            'SELECT COALESCE(SUM(current_balance), 0) as total FROM finance_accounts WHERE is_active = 1'
+            'SELECT COALESCE(SUM(current_balance), 0) as total FROM finance_accounts WHERE is_active = true'
         )->total;
 
         // Income / Expense / count summary
@@ -48,7 +48,7 @@ class FinanceDashboardController extends Controller
 
         // Account count
         $accountCount = (int) DB::selectOne(
-            'SELECT COUNT(*) as count FROM finance_accounts WHERE is_active = 1'
+            'SELECT COUNT(*) as count FROM finance_accounts WHERE is_active = true'
         )->count;
 
         // Recent 10 transactions
@@ -95,7 +95,7 @@ class FinanceDashboardController extends Controller
                 a.current_balance
              FROM finance_accounts a
              INNER JOIN finance_banks b ON a.bank_id = b.id
-             WHERE a.is_active = 1
+             WHERE a.is_active = true
              ORDER BY a.current_balance DESC"
         );
 

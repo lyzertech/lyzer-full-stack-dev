@@ -66,7 +66,7 @@ class UserDashboardController extends Controller
             ])
             ->selectRaw('COUNT(DISTINCT auth_users.id) as total')
             ->selectRaw(
-                "COALESCE(SUM(CASE WHEN auth_users.status = 'Active' AND auth_users.is_active = 1 THEN 1 ELSE 0 END), 0) as active"
+                "COALESCE(SUM(CASE WHEN auth_users.status = 'Active' AND auth_users.is_active = true THEN 1 ELSE 0 END), 0) as active"
             )
             ->selectRaw(
                 "COALESCE(SUM(CASE WHEN auth_users.status = 'PendingVerification' THEN 1 ELSE 0 END), 0) as pending"
@@ -133,7 +133,7 @@ class UserDashboardController extends Controller
             ])
             ->selectRaw(
                 '(SELECT ar.name FROM auth_user_roles aur INNER JOIN auth_roles ar ON ar.id = aur.role_id '
-                .'WHERE aur.user_id = auth_users.id AND aur.is_active = 1 AND ar.is_active = 1 '
+                .'WHERE aur.user_id = auth_users.id AND aur.is_active = true AND ar.is_active = true '
                 .'ORDER BY aur.assigned_at DESC LIMIT 1) as role_name'
             )
             ->get()
@@ -192,11 +192,11 @@ class UserDashboardController extends Controller
                 'last_name' => $validated['last_name'] ?? null,
                 'display_name' => $validated['display_name'] ?? null,
                 'email_verified' => false,
-                'is_active' => $activatable ? 1 : 0,
+                'is_active' => $activatable,
             ]);
 
             $user->status = $validated['status'];
-            $user->is_suspended = $validated['status'] === 'Suspended' ? 1 : 0;
+            $user->is_suspended = $validated['status'] === 'Suspended';
             $user->save();
 
             if (! empty($validated['role_id'])) {
@@ -206,7 +206,7 @@ class UserDashboardController extends Controller
                     'assigned_by' => (int) $request->user()->id,
                     'assigned_at' => now(),
                     'expires_at' => null,
-                    'is_active' => 1,
+                    'is_active' => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -253,8 +253,8 @@ class UserDashboardController extends Controller
             'name' => $validated['name'],
             'slug' => $validated['slug'],
             'description' => $validated['description'] ?? null,
-            'is_system' => $validated['is_system'] ?? 0,
-            'is_active' => 1,
+            'is_system' => $validated['is_system'] ?? false,
+            'is_active' => true,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

@@ -56,7 +56,7 @@ class VehicleDashboardController extends Controller
         // ── Low stock spareparts ──────────────────────────────────
         $lowStockCount = DB::selectOne("
             SELECT COUNT(*) as count FROM vehicle_spareparts
-            WHERE stock_quantity <= minimum_stock AND is_active = 1 AND deleted_at IS NULL
+            WHERE stock_quantity <= minimum_stock AND is_active = true AND deleted_at IS NULL
         ")->count;
 
         // ── Work order summary ────────────────────────────────────
@@ -115,7 +115,7 @@ class VehicleDashboardController extends Controller
         $lowStockItems = DB::select("
             SELECT id, sparepart_code, name, category, stock_quantity, minimum_stock, unit
             FROM vehicle_spareparts
-            WHERE stock_quantity <= minimum_stock AND is_active = 1 AND deleted_at IS NULL
+            WHERE stock_quantity <= minimum_stock AND is_active = true AND deleted_at IS NULL
             ORDER BY (stock_quantity - minimum_stock) ASC
             LIMIT 8
         ");

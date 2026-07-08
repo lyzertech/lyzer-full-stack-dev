@@ -71,9 +71,37 @@ type AddUserFormState = {
   role_id: string
 }
 
+type EditUserFormState = {
+  email: string
+  first_name: string
+  last_name: string
+  display_name: string
+  status: AuthUserStatus
+  role_id: string
+}
+
+type UserDetailData = {
+  id: number
+  email: string
+  first_name: string | null
+  last_name: string | null
+  display_name: string | null
+  status: AuthUserStatus
+  role_id: number | null
+}
+
 const defaultAddUserForm = (): AddUserFormState => ({
   email: '',
   password: '',
+  first_name: '',
+  last_name: '',
+  display_name: '',
+  status: 'Active',
+  role_id: '',
+})
+
+const defaultEditUserForm = (): EditUserFormState => ({
+  email: '',
   first_name: '',
   last_name: '',
   display_name: '',
@@ -146,6 +174,13 @@ const UserDashboard: React.FC = () => {
     useState<AddUserFormState>(defaultAddUserForm)
   const [addUserSubmitting, setAddUserSubmitting] = useState(false)
   const [addUserError, setAddUserError] = useState<string | null>(null)
+
+  const [showEditUserModal, setShowEditUserModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<UserDetailData | null>(null)
+  const [editUserForm, setEditUserForm] = useState<EditUserFormState>(defaultEditUserForm)
+  const [editUserSubmitting, setEditUserSubmitting] = useState(false)
+  const [editUserError, setEditUserError] = useState<string | null>(null)
+  const [loadingUserDetail, setLoadingUserDetail] = useState(false)
 
   const reloadDashboard = useCallback(async () => {
     setLoadingRoles(true)
@@ -313,6 +348,136 @@ const UserDashboard: React.FC = () => {
     }
   }
 
+  const openEditUserModal = async (userId: number) => {
+    if (!isSuperAdmin) return
+    setLoadingUserDetail(true)
+    setEditUserError(null)
+    
+    try {
+      const res = await apiClient.get(`/users/dashboard/users/${userId}`, { cache: 'no-store' })
+      
+      if (res.status !== 200) {
+        const body = res.data || {}
+        const msg = typeof body?.error === 'string' ? body.error : `Could not load user (${res.status})`
+        setEditUserError(msg)
+        setShowEditUserModal(true)
+        return
+      }
+
+      const userData = res.data.data
+      
+      const userDetail: UserDetailData = {
+        id: Number(userData.id),
+        email: String(userData.email ?? ''),
+        first_name: userData.first_name ? String(userData.first_name) : '',
+        last_name: userData.last_name ? String(userData.last_name) : '',
+        display_name: userData.display_name ? String(userData.display_name) : '',
+        status: String(userData.status ?? 'Active') as AuthUserStatus,
+        role_id: userData.role_id ? Number(userData.role_id) : null,
+      }
+
+      setEditingUser(userDetail)
+      setEditUserForm({
+        email: userDetail.email,
+        first_name: userDetail.first_name,
+        last_name: userDetail.last_name,
+        display_name: userDetail.display_name,
+        status: userDetail.status,
+        role_id: userDetail.role_id ? String(userDetail.role_id) : '',
+      })
+      setShowEditUserModal(true)
+    } catch (e: any) {
+      if (e.response?.status === 404) {
+        setEditUserError('User endpoint not found. Please check backend API.')
+      } else if (e.response?.status !== 401) {
+        setEditUserError(`Network error: ${e.message || 'Could not connect to server'}`)
+      }
+      
+      setShowEditUserModal(true)
+    } finally {
+      setLoadingUserDetail(false)
+    }
+  }
+
+  const closeEditUserModal = () => {
+    if (editUserSubmitting || loadingUserDetail) return
+    setShowEditUserModal(false)
+    setEditingUser(null)
+    setEditUserForm(defaultEditUserForm())
+    setEditUserError(null)
+  }
+
+  const handleEditUserField = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
+    const { name, value } = e.target
+    setEditUserForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!isSuperAdmin || !editingUser) return
+    setEditUserSubmitting(true)
+    setEditUserError(null)
+    try {
+      const payload: Record<string, unknown> = {
+        email: editUserForm.email.trim(),
+        first_name: editUserForm.first_name.trim() || null,
+        last_name: editUserForm.last_name.trim() || null,
+        display_name: editUserForm.display_name.trim() || null,
+        status: editUserForm.status,
+        role_id: editUserForm.role_id ? Number(editUserForm.role_id) : null,
+      }
+
+      const res = await apiClient.put(`/users/dashboard/users/${editingUser.id}`, payload)
+      
+      const body = res.data
+
+      if (res.status !== 200) {
+        if (
+          body &&
+          typeof body === 'object' &&
+          body !== null &&
+          'errors' in body
+        ) {
+          const errs = (body as { errors?: Record<string, string[]> }).errors
+          const flat =
+            errs && typeof errs === 'object'
+              ? Object.values(errs)
+                  .flat()
+                  .filter((m) => typeof m === 'string')
+                  .join(' ')
+              : ''
+          setEditUserError(
+            flat ||
+              (body as { message?: string }).message ||
+              `Request failed (${res.status})`,
+          )
+        } else {
+          setEditUserError(
+            typeof (body as { error?: string })?.error === 'string'
+              ? (body as { error: string }).error
+              : `Could not update user (${res.status})`,
+          )
+        }
+        return
+      }
+
+      setShowEditUserModal(false)
+      setEditingUser(null)
+      setEditUserForm(defaultEditUserForm())
+      await reloadDashboard()
+    } catch (e: any) {
+      if (e.response?.status !== 401) {
+        setEditUserError('Network error while updating user.')
+      }
+    } finally {
+      setEditUserSubmitting(false)
+    }
+  }
+
   return (
     <Fragment>
       <Seo title="User Dashboard" />
@@ -474,6 +639,156 @@ const UserDashboard: React.FC = () => {
                 </>
               ) : (
                 'Create user'
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+      ) : null}
+
+      {isSuperAdmin ? (
+      <Modal
+        show={showEditUserModal}
+        onHide={closeEditUserModal}
+        centered
+        className="fade"
+        id="edit-user-modal"
+        tabIndex={-1}
+        aria-labelledby="edit-user-modal-title"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title as="h6" id="edit-user-modal-title">
+            Edit User
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleEditUserSubmit}>
+          <Modal.Body className="px-4">
+            {loadingUserDetail ? (
+              <div className="text-center py-4">
+                <Spinner animation="border" size="sm" className="me-2" />
+                Loading user data…
+              </div>
+            ) : editUserError ? (
+              <Alert variant="danger" className="mb-3 py-2">
+                {editUserError}
+              </Alert>
+            ) : editingUser ? (
+              <>
+                <Row className="g-2 mb-2">
+                  <Col md={12}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="fs-12">Email</Form.Label>
+                      <Form.Control
+                        name="email"
+                        type="email"
+                        required
+                        autoComplete="off"
+                        value={editUserForm.email}
+                        onChange={handleEditUserField}
+                        disabled={editUserSubmitting}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row className="g-2 mb-2">
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="fs-12">First name</Form.Label>
+                      <Form.Control
+                        name="first_name"
+                        type="text"
+                        value={editUserForm.first_name}
+                        onChange={handleEditUserField}
+                        disabled={editUserSubmitting}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="fs-12">Last name</Form.Label>
+                      <Form.Control
+                        name="last_name"
+                        type="text"
+                        value={editUserForm.last_name}
+                        onChange={handleEditUserField}
+                        disabled={editUserSubmitting}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Form.Group className="mb-2">
+                  <Form.Label className="fs-12">Display name</Form.Label>
+                  <Form.Control
+                    name="display_name"
+                    type="text"
+                    value={editUserForm.display_name}
+                    onChange={handleEditUserField}
+                    disabled={editUserSubmitting}
+                  />
+                </Form.Group>
+                <Row className="g-2 mb-2">
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="fs-12">Status</Form.Label>
+                      <Form.Select
+                        name="status"
+                        value={editUserForm.status}
+                        onChange={handleEditUserField}
+                        disabled={editUserSubmitting}
+                      >
+                        {AUTH_USER_STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s === 'PendingVerification'
+                              ? 'Pending verification'
+                              : s}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="fs-12">Role</Form.Label>
+                      <Form.Select
+                        name="role_id"
+                        value={editUserForm.role_id}
+                        onChange={handleEditUserField}
+                        disabled={editUserSubmitting || loadingRoles}
+                      >
+                        <option value="">No role</option>
+                        {assignableRoles.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </>
+            ) : null}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="light"
+              type="button"
+              onClick={closeEditUserModal}
+              disabled={editUserSubmitting || loadingUserDetail}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={editUserSubmitting || loadingUserDetail || !editingUser}
+            >
+              {editUserSubmitting ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Updating…
+                </>
+              ) : (
+                'Update user'
               )}
             </Button>
           </Modal.Footer>
@@ -670,12 +985,13 @@ const UserDashboard: React.FC = () => {
                         <th>User</th>
                         <th>Role</th>
                         <th>Status</th>
+                        {isSuperAdmin ? <th className="text-center">Action</th> : null}
                       </tr>
                     </thead>
                     <tbody>
                       {loadingRecent ? (
                         <tr>
-                          <td colSpan={3} className="text-center py-4">
+                          <td colSpan={isSuperAdmin ? 4 : 3} className="text-center py-4">
                             <Spinner
                               animation="border"
                               size="sm"
@@ -687,7 +1003,7 @@ const UserDashboard: React.FC = () => {
                       ) : visibleRecentUsers.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={3}
+                            colSpan={isSuperAdmin ? 4 : 3}
                             className="text-muted text-center py-4"
                           >
                             No users yet.
@@ -716,6 +1032,21 @@ const UserDashboard: React.FC = () => {
                                   : user.status}
                               </span>
                             </td>
+                            {isSuperAdmin ? (
+                              <td className="text-center">
+                                <Button
+                                  variant="primary-light"
+                                  size="sm"
+                                  className="btn-wave"
+                                  type="button"
+                                  onClick={() => openEditUserModal(user.id)}
+                                  disabled={loadingUserDetail}
+                                  title="Edit user"
+                                >
+                                  <i className="ri-edit-line fs-12"></i>
+                                </Button>
+                              </td>
+                            ) : null}
                           </tr>
                         ))
                       )}

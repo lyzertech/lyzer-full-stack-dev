@@ -101,13 +101,13 @@ class VehicleDashboardController extends Controller
         // ── Monthly cost trend (last 6 months) ────────────────────
         $monthlyCostTrend = DB::select("
             SELECT
-                DATE_FORMAT(cost_date, '%Y-%m') as month,
+                TO_CHAR(cost_date, 'YYYY-MM') as month,
                 SUM(CASE WHEN cost_type = 'Maintenance' THEN amount ELSE 0 END) as maintenance,
                 SUM(CASE WHEN cost_type = 'Fuel' THEN amount ELSE 0 END) as fuel,
                 SUM(amount) as total
             FROM vehicle_cost_records
             WHERE cost_date >= ?
-            GROUP BY DATE_FORMAT(cost_date, '%Y-%m')
+            GROUP BY TO_CHAR(cost_date, 'YYYY-MM')
             ORDER BY month ASC
         ", [Carbon::now()->subMonths(6)->startOfMonth()->toDateString()]);
 

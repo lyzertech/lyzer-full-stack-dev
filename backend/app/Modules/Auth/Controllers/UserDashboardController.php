@@ -268,4 +268,183 @@ class UserDashboardController extends Controller
             ],
         ], 201);
     }
+
+    /**
+     * Show specific user for editing.
+     */
+    public function showUser(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || $this->activeRoleSlugForUser((int) $user->id) !== 'superadmin') {
+            return response()->json([
+                'message' => 'Forbidden. Only superadmin can view user details.',
+            ], 403);
+        }
+
+        $userData = DB::table('auth_users')
+            ->leftJoin('auth_user_roles', function ($join) {
+                $join->on('auth_users.id', '=', 'auth_user_roles.user_id')
+                    ->where('auth_user_roles.is_active', 1);
+            })
+            ->leftJoin('auth_roles', 'auth_user_roles.role_id', '=', 'auth_roles.id')
+            ->where('auth_users.id', $id)
+            ->whereNull('auth_users.deleted_at')
+            ->select([
+                'auth_users.id',
+                'auth_users.email',
+                'auth_users.first_name',
+                'auth_users.last_name',
+                'auth_users.display_name',
+                'auth_users.status',
+                'auth_roles.id as role_id',
+                'auth_roles.name as role_name',
+            ])
+            ->first();
+
+        if (! $userData) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => (int) $userData->id,
+                'email' => $userData->email,
+                'first_name' => $userData->first_name,
+                'last_name' => $userData->last_name,
+                'display_name' => $userData->display_name,
+                'status' => $userData->status,
+                'role_id' => $userData->role_id ? (int) $userData->role_id : null,
+                'role_name' => $userData->role_name,
+            ],
+        ]);
+    }
+
+    /**
+     * Update specific user.
+     */
+    public function updateUser(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || $this->activeRoleSlugForUser((int) $user->id) !== 'superadmin') {
+            return response()->json([
+                'message' => 'Forbidden. Only superadmin can update users.',
+            ], 403);
+        }
+
+        $targetUser = DB::table('auth_users')
+            ->where('id', $id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (! $targetUser) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        $statuses = ['Active', 'Inactive', 'Suspended', 'Banned', 'PendingVerification'];
+
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255', Rule::unique('auth_users', 'email')->ignore($id)],
+            'first_name' => ['nullable', 'string', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:100'],
+            'display_name' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'string', Rule::in($statuses)],
+            'role_id' => ['nullable', 'integer', Rule::exists('auth_roles', 'id')->where('is_active', 1)],
+        ]);
+
+        DB::transaction(function () use ($validated, $id, $request) {
+            $activatable = in_array($validated['status'], ['Active', 'PendingVerification'], true);
+
+            // Update auth_users
+            DB::table('auth_users')
+                ->where('id', $id)
+                ->update([
+                    'email' => $validated['email'],
+                    'first_name' => $validated['first_name'] ?? null,
+                    'last_name' => $validated['last_name'] ?? null,
+                    'display_name' => $validated['display_name'] ?? null,
+                    'status' => $validated['status'],
+                    'is_active' => $activatable,
+                    'is_suspended' => $validated['status'] === 'Suspended',
+                    'updated_at' => now(),
+                ]);
+
+            // Update role assignment
+            // First, deactivate all current roles
+            DB::table('auth_user_roles')
+                ->where('user_id', $id)
+                ->update(['is_active' => false, 'updated_at' => now()]);
+
+            // If new role is specified, assign it
+            if (! empty($validated['role_id'])) {
+                // Check if this role assignment already exists
+                $existingRole = DB::table('auth_user_roles')
+                    ->where('user_id', $id)
+                    ->where('role_id', $validated['role_id'])
+                    ->first();
+
+                if ($existingRole) {
+                    // Reactivate existing role
+                    DB::table('auth_user_roles')
+                        ->where('user_id', $id)
+                        ->where('role_id', $validated['role_id'])
+                        ->update([
+                            'is_active' => true,
+                            'assigned_by' => (int) $request->user()->id,
+                            'assigned_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                } else {
+                    // Create new role assignment
+                    DB::table('auth_user_roles')->insert([
+                        'user_id' => $id,
+                        'role_id' => (int) $validated['role_id'],
+                        'assigned_by' => (int) $request->user()->id,
+                        'assigned_at' => now(),
+                        'expires_at' => null,
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        });
+
+        // Return updated user data
+        $updatedUser = DB::table('auth_users')
+            ->leftJoin('auth_user_roles', function ($join) {
+                $join->on('auth_users.id', '=', 'auth_user_roles.user_id')
+                    ->where('auth_user_roles.is_active', 1);
+            })
+            ->leftJoin('auth_roles', 'auth_user_roles.role_id', '=', 'auth_roles.id')
+            ->where('auth_users.id', $id)
+            ->select([
+                'auth_users.id',
+                'auth_users.email',
+                'auth_users.first_name',
+                'auth_users.last_name',
+                'auth_users.display_name',
+                'auth_users.status',
+                'auth_roles.name as role_name',
+            ])
+            ->first();
+
+        $name = $updatedUser->display_name ?: trim(implode(' ', array_filter([$updatedUser->first_name, $updatedUser->last_name])));
+        if ($name === '') {
+            $name = $updatedUser->email;
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => (int) $updatedUser->id,
+                'email' => $updatedUser->email,
+                'name' => $name,
+                'status' => $updatedUser->status,
+                'role' => $updatedUser->role_name,
+            ],
+        ]);
+    }
 }

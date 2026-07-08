@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Card, Button, Form, Modal, Row, Col, Badge } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 // Types
 interface ElectricalNode {
@@ -18,515 +19,161 @@ interface ElectricalNode {
     powerFactor?: string
   }
   position?: { x: number; y: number }
+  status?: 'online' | 'offline' | 'warning' | 'idle' | string
+  meta?: any
 }
 
-interface TreeBuilderProps {
-  onSave: (tree: ElectricalNode[]) => void
-  initialData?: ElectricalNode[]
-}
-
-// Dummy data generator
-const generateElectricalData = () => ({
-  voltage: (220 + Math.random() * 20).toFixed(1),
-  current: (5 + Math.random() * 5).toFixed(1),
-  power: (1 + Math.random() * 5).toFixed(1),
-  frequency: (50 + Math.random() * 0.5).toFixed(2),
-  powerFactor: (0.85 + Math.random() * 0.1).toFixed(2),
-})
-
-// Tree Builder Component
-const TreeBuilder: React.FC<TreeBuilderProps> = ({ onSave, initialData = [] }) => {
-  const [numParents, setNumParents] = useState<number>(2)
-  const [showParentForm, setShowParentForm] = useState<boolean>(false)
-  const [nodes, setNodes] = useState<ElectricalNode[]>(initialData)
-  const [currentNode, setCurrentNode] = useState<ElectricalNode | null>(null)
-  const [showChildModal, setShowChildModal] = useState<boolean>(false)
-  const [childCount, setChildCount] = useState<number>(0)
-
-  const nodeTypes = [
-    { value: 'feeder', label: 'Feeder' },
-    { value: 'transformer', label: 'Transformer' },
-    { value: 'breaker', label: 'Circuit Breaker' },
-    { value: 'switchboard', label: 'Switchboard' },
-    { value: 'panel', label: 'Panel' },
-    { value: 'powermeter', label: 'Power Meter' },
-  ]
-
-  const handleCreateParents = () => {
-    setShowParentForm(true)
+// Helper function to format metrics from API or return zeros if no data
+const formatMetrics = (metrics: any) => {
+  if (!metrics) {
+    // Return zeros when no metrics available
+    return {
+      voltage: '0.00',
+      current: '0.00',
+      power: '0.00',
+      frequency: '0.00',
+      powerFactor: '0.00',
+    }
   }
+  
+  return {
+    voltage: metrics.voltage?.toFixed(2) || '0.00',
+    current: metrics.current?.toFixed(2) || '0.00',
+    power: metrics.power?.toFixed(2) || '0.00',
+    frequency: metrics.frequency?.toFixed(2) || '0.00',
+    powerFactor: metrics.powerFactor?.toFixed(2) || '0.00',
+  }
+}
 
-  const handleAddParentNode = (index: number, name: string, type: string) => {
-    const newNode: ElectricalNode = {
-      id: `parent-${Date.now()}-${index}`,
-      name: name || `Parent ${index + 1}`,
-      type: type as any,
+// Transform device tree API data to ElectricalNode format
+function transformDeviceTreeToElectricalNodes(apiData: any[]): ElectricalNode[] {
+  const result: ElectricalNode[] = []
+  
+  apiData.forEach((org, orgIndex) => {
+    // Organization level → Feeder (main power source)
+    const orgNode: ElectricalNode = {
+      id: `org-${org.id}`,
+      name: org.name || `Organization ${orgIndex + 1}`,
+      type: 'feeder',
       parentId: null,
       children: [],
-      data: generateElectricalData(),
+      data: formatMetrics(null), // Org level has no real device, show zeros
+      status: 'online',
+      meta: { orgId: org.id, orgName: org.name }
     }
-    setNodes((prev) => [...prev, newNode])
-  }
-
-  const handleAddChildren = (parentNode: ElectricalNode) => {
-    setCurrentNode(parentNode)
-    setShowChildModal(true)
-  }
-
-  const handleCreateChildren = () => {
-    if (!currentNode) return
-
-    const newChildren: ElectricalNode[] = []
-    for (let i = 0; i < childCount; i++) {
-      newChildren.push({
-        id: `child-${Date.now()}-${i}`,
-        name: `Child ${i + 1}`,
-        type: 'powermeter',
-        parentId: currentNode.id,
-        children: [],
-        data: generateElectricalData(),
-      })
-    }
-
-    setNodes((prev) =>
-      prev.map((node) => {
-        if (node.id === currentNode.id) {
-          return { ...node, children: [...node.children, ...newChildren] }
+    
+    const facilities = org.facilities || []
+    facilities.forEach((facility: any) => {
+      const devices = facility.devices || []
+      
+      if (devices.length === 0) return
+      
+      // Find device with device_type = 'Incoming' to promote to facility level
+      const incomingDevice = devices.find((d: any) => 
+        d.device_type?.toLowerCase() === 'incoming'
+      )
+      
+      if (incomingDevice) {
+        // PROMOTED DEVICE: Incoming device becomes facility level (parent)
+        const facilityNode: ElectricalNode = {
+          id: `dev-${incomingDevice.id}`,
+          name: incomingDevice.name || incomingDevice.device_code || `Incoming ${incomingDevice.id}`,
+          type: 'switchboard', // Visual representation as switchboard
+          parentId: orgNode.id,
+          children: [],
+          data: formatMetrics(incomingDevice.latest_metrics),
+          status: incomingDevice.status?.toLowerCase() || 'offline',
+          meta: {
+            deviceId: incomingDevice.id,
+            deviceCode: incomingDevice.device_code,
+            deviceName: incomingDevice.name,
+            model: incomingDevice.model,
+            ip: incomingDevice.ip_address,
+            port: incomingDevice.port,
+            deviceType: incomingDevice.device_type,
+            brand: incomingDevice.brand,
+            isPromoted: true, // Flag to indicate this is a promoted device
+            originalFacility: facility.name,
+            hasRealMetrics: !!incomingDevice.latest_metrics
+          }
         }
-        return updateNodeChildren(node, currentNode.id, newChildren)
-      })
-    )
-
-    setShowChildModal(false)
-    setChildCount(0)
-  }
-
-  const updateNodeChildren = (
-    node: ElectricalNode,
-    targetId: string,
-    newChildren: ElectricalNode[]
-  ): ElectricalNode => {
-    if (node.id === targetId) {
-      return { ...node, children: [...node.children, ...newChildren] }
-    }
-    return {
-      ...node,
-      children: node.children.map((child) => updateNodeChildren(child, targetId, newChildren)),
-    }
-  }
-
-  const handleUpdateNodeName = (nodeId: string, newName: string) => {
-    setNodes((prev) => prev.map((node) => updateNodeName(node, nodeId, newName)))
-  }
-
-  const updateNodeName = (node: ElectricalNode, targetId: string, newName: string): ElectricalNode => {
-    if (node.id === targetId) {
-      return { ...node, name: newName }
-    }
-    return {
-      ...node,
-      children: node.children.map((child) => updateNodeName(child, targetId, newName)),
-    }
-  }
-
-  const handleDeleteNode = (nodeId: string) => {
-    setNodes((prev) => prev.filter((node) => node.id !== nodeId).map((node) => deleteNodeById(node, nodeId)))
-  }
-
-  const deleteNodeById = (node: ElectricalNode, targetId: string): ElectricalNode => {
-    return {
-      ...node,
-      children: node.children.filter((child) => child.id !== targetId).map((child) => deleteNodeById(child, targetId)),
-    }
-  }
-
-  const getAllNodes = (nodes: ElectricalNode[]): ElectricalNode[] => {
-    let allNodes: ElectricalNode[] = []
-    nodes.forEach((node) => {
-      allNodes.push(node)
-      if (node.children.length > 0) {
-        allNodes = [...allNodes, ...getAllNodes(node.children)]
+        
+        // OTHER DEVICES: Become children of the promoted incoming device
+        devices
+          .filter((d: any) => d.id !== incomingDevice.id)
+          .forEach((device: any) => {
+            const deviceNode: ElectricalNode = {
+              id: `dev-${device.id}`,
+              name: device.name || device.device_code || `Device ${device.id}`,
+              type: 'powermeter',
+              parentId: facilityNode.id,
+              children: [],
+              data: formatMetrics(device.latest_metrics),
+              status: device.status?.toLowerCase() || 'offline',
+              meta: {
+                deviceId: device.id,
+                deviceCode: device.device_code,
+                deviceName: device.name,
+                model: device.model,
+                ip: device.ip_address,
+                port: device.port,
+                deviceType: device.device_type,
+                brand: device.brand,
+                hasRealMetrics: !!device.latest_metrics
+              }
+            }
+            
+            facilityNode.children.push(deviceNode)
+          })
+        
+        orgNode.children.push(facilityNode)
+      } else {
+        // NO INCOMING DEVICE: Use traditional facility structure
+        const facilityNode: ElectricalNode = {
+          id: `fac-${facility.id}`,
+          name: facility.name || `Facility ${facility.id}`,
+          type: 'switchboard',
+          parentId: orgNode.id,
+          children: [],
+          data: formatMetrics(null), // Facility node has no real device, show zeros
+          status: 'online',
+          meta: { facilityId: facility.id, facilityName: facility.name }
+        }
+        
+        // All devices become children of facility
+        devices.forEach((device: any) => {
+          const deviceNode: ElectricalNode = {
+            id: `dev-${device.id}`,
+            name: device.name || device.device_code || `Device ${device.id}`,
+            type: 'powermeter',
+            parentId: facilityNode.id,
+            children: [],
+            data: formatMetrics(device.latest_metrics),
+            status: device.status?.toLowerCase() || 'offline',
+            meta: {
+              deviceId: device.id,
+              deviceCode: device.device_code,
+              deviceName: device.name,
+              model: device.model,
+              ip: device.ip_address,
+              port: device.port,
+              deviceType: device.device_type,
+              brand: device.brand,
+              hasRealMetrics: !!device.latest_metrics
+            }
+          }
+          
+          facilityNode.children.push(deviceNode)
+        })
+        
+        orgNode.children.push(facilityNode)
       }
     })
-    return allNodes
-  }
-
-  const getTypeColor = (type: string) => {
-    const colors: { [key: string]: string } = {
-      feeder: '#ff4444',
-      transformer: '#ff8800',
-      breaker: '#00aaff',
-      switchboard: '#00ff88',
-      panel: '#ffaa00',
-      powermeter: '#9d4edd',
-    }
-    return colors[type] || '#888'
-  }
-
-  const getTypeIcon = (type: string) => {
-    const icons: { [key: string]: string } = {
-      feeder: '⚡',
-      transformer: '🔄',
-      breaker: '⚙️',
-      switchboard: '📊',
-      panel: '📋',
-      powermeter: '🔌',
-    }
-    return icons[type] || '●'
-  }
-
-  const renderNodeTree = (node: ElectricalNode, level: number = 0) => {
-    return (
-      <div key={node.id} style={{ marginLeft: `${level * 25}px`, marginBottom: '12px' }}>
-        <div
-          style={{
-            padding: '12px 15px',
-            background: level === 0 
-              ? 'linear-gradient(135deg, rgba(255, 68, 68, 0.1), rgba(255, 136, 0, 0.1))'
-              : 'rgba(255, 255, 255, 0.03)',
-            borderRadius: '8px',
-            border: `2px solid ${level === 0 ? getTypeColor(node.type) : 'rgba(255, 255, 255, 0.1)'}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            transition: 'all 0.3s ease',
-            boxShadow: level === 0 ? '0 4px 12px rgba(0, 0, 0, 0.3)' : 'none',
-          }}
-          className="node-item-hover"
-        >
-          <span style={{ fontSize: '20px' }}>{getTypeIcon(node.type)}</span>
-          <Form.Control
-            type="text"
-            value={node.name}
-            onChange={(e) => handleUpdateNodeName(node.id, e.target.value)}
-            style={{ 
-              width: '220px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#fff',
-              fontWeight: '500',
-            }}
-          />
-          <Badge 
-            bg="" 
-            style={{ 
-              background: getTypeColor(node.type),
-              fontSize: '11px',
-              padding: '5px 10px',
-            }}
-          >
-            {node.type.toUpperCase()}
-          </Badge>
-          <Badge bg="secondary">{node.children.length} child</Badge>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-            <Button 
-              size="sm" 
-              variant="outline-success" 
-              onClick={() => handleAddChildren(node)}
-              style={{ fontSize: '12px' }}
-            >
-              + Child
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline-danger" 
-              onClick={() => handleDeleteNode(node.id)}
-              style={{ fontSize: '12px' }}
-            >
-              🗑️
-            </Button>
-          </div>
-        </div>
-        {node.children.map((child) => renderNodeTree(child, level + 1))}
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <style jsx>{`
-        .node-item-hover:hover {
-          transform: translateX(5px);
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4) !important;
-        }
-        .custom-card-gradient {
-          background: linear-gradient(135deg, rgba(20, 25, 40, 0.95), rgba(30, 35, 50, 0.95));
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-        .btn-gradient-primary {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          transition: all 0.3s ease;
-        }
-        .btn-gradient-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-        .btn-gradient-success {
-          background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-          border: none;
-          transition: all 0.3s ease;
-        }
-        .btn-gradient-success:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
-        }
-      `}</style>
-      <Card className="custom-card custom-card-gradient mb-3">
-        <Card.Header style={{ 
-          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2))',
-          borderBottom: '2px solid rgba(102, 126, 234, 0.3)',
-        }}>
-          <Card.Title style={{ fontSize: '20px', fontWeight: '600', color: '#fff' }}>
-            🔧 Tree Structure Builder
-          </Card.Title>
-        </Card.Header>
-        <Card.Body style={{ padding: '25px' }}>
-          {nodes.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '40px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '12px',
-              border: '2px dashed rgba(255, 255, 255, 0.1)',
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚡</div>
-              <h5 style={{ color: '#fff', marginBottom: '15px' }}>Mulai Buat Single Line Diagram</h5>
-              <p style={{ color: '#888', marginBottom: '25px' }}>
-                Tentukan jumlah parent nodes (feeder utama) untuk memulai
-              </p>
-              <Form.Group className="mb-3" style={{ maxWidth: '300px', margin: '0 auto 20px' }}>
-                <Form.Label style={{ color: '#aaa', fontWeight: '500' }}>
-                  Jumlah Parent Nodes (Feeder Utama)
-                </Form.Label>
-                <Form.Control
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={numParents}
-                  onChange={(e) => setNumParents(parseInt(e.target.value) || 1)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    color: '#fff',
-                    fontSize: '18px',
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                  }}
-                />
-              </Form.Group>
-              <Button 
-                className="btn-gradient-primary" 
-                size="lg"
-                onClick={handleCreateParents}
-                style={{ padding: '12px 40px', fontSize: '16px', fontWeight: '600' }}
-              >
-                🚀 Buat Parent Nodes
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <div className="mb-4" style={{ 
-                display: 'flex', 
-                gap: '12px',
-                padding: '15px',
-                background: 'rgba(255, 255, 255, 0.02)',
-                borderRadius: '8px',
-              }}>
-                <Button 
-                  className="btn-gradient-success" 
-                  onClick={() => onSave(nodes)}
-                  style={{ flex: 1, padding: '12px', fontWeight: '600' }}
-                >
-                  ✨ Generate SLD
-                </Button>
-                <Button 
-                  variant="outline-secondary" 
-                  onClick={() => setNodes([])}
-                  style={{ padding: '12px 30px' }}
-                >
-                  🔄 Reset
-                </Button>
-              </div>
-              <div style={{ 
-                maxHeight: '500px', 
-                overflowY: 'auto',
-                padding: '10px',
-                background: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '8px',
-              }}>
-                {nodes.map((node) => renderNodeTree(node))}
-              </div>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
-
-      {/* Modal for creating parent nodes */}
-      <Modal 
-        show={showParentForm} 
-        onHide={() => setShowParentForm(false)} 
-        size="lg"
-        centered
-      >
-        <Modal.Header 
-          closeButton
-          style={{
-            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2))',
-            borderBottom: '2px solid rgba(102, 126, 234, 0.3)',
-          }}
-        >
-          <Modal.Title style={{ color: '#fff', fontWeight: '600' }}>
-            ⚙️ Setup Parent Nodes
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ background: 'rgba(20, 25, 40, 0.95)', padding: '30px' }}>
-          {Array.from({ length: numParents }, (_, i) => (
-            <div 
-              key={i} 
-              style={{
-                marginBottom: '20px',
-                padding: '20px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-              }}
-            >
-              <h6 style={{ color: '#fff', marginBottom: '15px', fontSize: '14px' }}>
-                🔌 Parent Node {i + 1}
-              </h6>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-0">
-                    <Form.Label style={{ color: '#aaa', fontSize: '13px' }}>Nama Parent</Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      id={`parent-name-${i}`} 
-                      placeholder={`Feeder ${i + 1}`}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        color: '#fff',
-                      }}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-0">
-                    <Form.Label style={{ color: '#aaa', fontSize: '13px' }}>Type</Form.Label>
-                    <Form.Select 
-                      id={`parent-type-${i}`}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        color: '#fff',
-                      }}
-                    >
-                      {nodeTypes.map((type) => (
-                        <option key={type.value} value={type.value} style={{ background: '#1a1f30' }}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-              </Row>
-            </div>
-          ))}
-        </Modal.Body>
-        <Modal.Footer style={{ background: 'rgba(20, 25, 40, 0.95)', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <Button 
-            variant="outline-secondary" 
-            onClick={() => setShowParentForm(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="btn-gradient-primary"
-            onClick={() => {
-              for (let i = 0; i < numParents; i++) {
-                const nameInput = document.getElementById(`parent-name-${i}`) as HTMLInputElement
-                const typeSelect = document.getElementById(`parent-type-${i}`) as HTMLSelectElement
-                handleAddParentNode(i, nameInput?.value || '', typeSelect?.value || 'feeder')
-              }
-              setShowParentForm(false)
-            }}
-          >
-            ✨ Create Parents
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal for adding children */}
-      <Modal 
-        show={showChildModal} 
-        onHide={() => setShowChildModal(false)}
-        centered
-      >
-        <Modal.Header 
-          closeButton
-          style={{
-            background: 'linear-gradient(135deg, rgba(17, 153, 142, 0.2), rgba(56, 239, 125, 0.2))',
-            borderBottom: '2px solid rgba(56, 239, 125, 0.3)',
-          }}
-        >
-          <Modal.Title style={{ color: '#fff', fontWeight: '600' }}>
-            ➕ Add Children to {currentNode?.name}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ background: 'rgba(20, 25, 40, 0.95)', padding: '30px' }}>
-          <div style={{
-            padding: '20px',
-            background: 'rgba(56, 239, 125, 0.05)',
-            borderRadius: '8px',
-            border: '1px solid rgba(56, 239, 125, 0.2)',
-            marginBottom: '20px',
-          }}>
-            <p style={{ color: '#38ef7d', marginBottom: '5px', fontSize: '14px' }}>
-              Parent: <strong>{currentNode?.name}</strong>
-            </p>
-            <p style={{ color: '#888', marginBottom: '0', fontSize: '12px' }}>
-              Type: {currentNode?.type}
-            </p>
-          </div>
-          <Form.Group>
-            <Form.Label style={{ color: '#aaa', fontSize: '14px', fontWeight: '500' }}>
-              Jumlah Child Nodes
-            </Form.Label>
-            <Form.Control
-              type="number"
-              min="1"
-              max="10"
-              value={childCount}
-              onChange={(e) => setChildCount(parseInt(e.target.value) || 0)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: '#fff',
-                fontSize: '16px',
-                padding: '12px',
-              }}
-            />
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer style={{ background: 'rgba(20, 25, 40, 0.95)', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <Button 
-            variant="outline-secondary" 
-            onClick={() => setShowChildModal(false)}
-          >
-            Cancel
-          </Button>
-          <Button 
-            className="btn-gradient-success"
-            onClick={handleCreateChildren}
-          >
-            ✨ Create Children
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </div>
-  )
+    
+    result.push(orgNode)
+  })
+  
+  return result
 }
 
 // Visual Components
@@ -830,55 +477,115 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
   const [positionedNodes, setPositionedNodes] = useState<ElectricalNode[]>([])
 
   useEffect(() => {
-    // Calculate positions for all nodes
+    // Calculate positions - preserve parent-child vertical alignment
     const calculatePositions = () => {
       const positioned: ElectricalNode[] = []
+      const nodeSpacing = 225 // Horizontal spacing between nodes (reduced to 3/4)
+      const levelHeight = 200 // Vertical spacing between levels
       const startY = 120
-      const parentSpacing = 800 // Increased spacing between parents
-      const childSpacing = 220 // Increased spacing between children
-      const levelHeight = 200 // Increased vertical spacing
-      const childYOffset = 0 // Y offset for child positioning (+ down, - up)
+      const startX = 250
 
-      nodes.forEach((parent, parentIndex) => {
-        const parentX = 250 + parentIndex * parentSpacing
-        const parentNode = {
-          ...parent,
-          position: { x: parentX, y: startY },
+      // Calculate the width needed for each organization (max descendants at any level)
+      const calculateOrgWidth = (org: ElectricalNode): number => {
+        let maxWidth = 1 // At minimum, the org itself takes 1 column
+        
+        if (org.children && org.children.length > 0) {
+          // Calculate width for each facility
+          const facilityWidths = org.children.map(facility => {
+            if (facility.children && facility.children.length > 0) {
+              return facility.children.length // Number of devices
+            }
+            return 1 // Facility with no devices still takes 1 column
+          })
+          maxWidth = Math.max(maxWidth, ...facilityWidths, org.children.length)
         }
-        positioned.push(parentNode)
+        
+        return maxWidth
+      }
 
-        // Position children recursively
-        positionChildren(parent, parentX, startY + levelHeight, childSpacing, positioned, 1, levelHeight)
+      // Assign column ranges to each org
+      let currentColumn = 0
+      const orgColumnRanges: { startCol: number; width: number; org: ElectricalNode }[] = []
+      
+      nodes.forEach(org => {
+        const width = calculateOrgWidth(org)
+        orgColumnRanges.push({
+          startCol: currentColumn,
+          width: width,
+          org: org
+        })
+        currentColumn += width
+      })
+
+      // Position nodes within their assigned column ranges
+      orgColumnRanges.forEach((orgRange, orgIndex) => {
+        const org = orgRange.org
+        const orgCenterCol = orgRange.startCol + (orgRange.width / 2) - 0.5
+        
+        // Position organization at center of its zone
+        const orgNode: ElectricalNode = {
+          ...org,
+          position: {
+            x: startX + orgCenterCol * nodeSpacing,
+            y: startY
+          }
+        }
+        positioned.push(orgNode)
+
+        // Position facilities (level 1)
+        if (org.children && org.children.length > 0) {
+          org.children.forEach((facility, facIndex) => {
+            let facilityX: number
+            
+            if (org.children.length === 1) {
+              // Single facility: center it in org's zone
+              facilityX = startX + orgCenterCol * nodeSpacing
+            } else {
+              // Multiple facilities: distribute across org's zone
+              const facSpacing = orgRange.width / org.children.length
+              facilityX = startX + (orgRange.startCol + facIndex * facSpacing + facSpacing / 2) * nodeSpacing
+            }
+
+            const facilityNode: ElectricalNode = {
+              ...facility,
+              position: {
+                x: facilityX,
+                y: startY + levelHeight
+              }
+            }
+            positioned.push(facilityNode)
+
+            // Position devices (level 2)
+            if (facility.children && facility.children.length > 0) {
+              facility.children.forEach((device, devIndex) => {
+                let deviceX: number
+                
+                if (facility.children.length === 1) {
+                  // Single device: align with facility
+                  deviceX = facilityX
+                } else {
+                  // Multiple devices: distribute around facility
+                  const devicesPerFacility = facility.children.length
+                  const deviceSpacing = (orgRange.width / org.children.length) / devicesPerFacility
+                  const facilityStartCol = orgRange.startCol + facIndex * (orgRange.width / org.children.length)
+                  deviceX = startX + (facilityStartCol + devIndex * deviceSpacing + deviceSpacing / 2) * nodeSpacing
+                }
+
+                const deviceNode: ElectricalNode = {
+                  ...device,
+                  position: {
+                    x: deviceX,
+                    y: startY + levelHeight * 2
+                  }
+                }
+                positioned.push(deviceNode)
+              })
+            }
+          })
+        }
       })
 
       setPositionedNodes(positioned)
-    }
-
-    const positionChildren = (
-      parent: ElectricalNode,
-      parentX: number,
-      currentY: number,
-      spacing: number,
-      positioned: ElectricalNode[],
-      level: number,
-      levelHeight: number,
-      yOffset: number = 0
-    ) => {
-      const totalWidth = (parent.children.length - 1) * spacing
-      const startX = parentX - totalWidth / 2
-
-      parent.children.forEach((child, index) => {
-        const childX = startX + index * spacing
-        const childNode = {
-          ...child,
-          position: { x: childX, y: currentY + yOffset },
-        }
-        positioned.push(childNode)
-
-        if (child.children.length > 0) {
-          positionChildren(child, childX, currentY + levelHeight, spacing * 0.8, positioned, level + 1, levelHeight)
-        }
-      })
     }
 
     calculatePositions()
@@ -886,19 +593,24 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
 
   const renderConnections = () => {
     const connections: React.ReactElement[] = []
-    const allNodes = positionedNodes
+    
+    // Create a map for quick node lookup by ID
+    const nodeMap = new Map<string, ElectricalNode>()
+    positionedNodes.forEach((node) => {
+      nodeMap.set(node.id, node)
+    })
 
-    allNodes.forEach((node) => {
+    positionedNodes.forEach((node) => {
       if (node.children.length > 0) {
         node.children.forEach((child, childIndex) => {
-          const childNode = allNodes.find((n) => n.id === child.id)
+          const childNode = nodeMap.get(child.id)
           if (childNode && node.position && childNode.position) {
             const startX = node.position.x
             const startY = node.position.y + 30
             const endX = childNode.position.x
             const endY = childNode.position.y - 40
             
-            // Calculate midpoint for angular path
+            // Calculate midpoint for connection
             const midY = startY + (endY - startY) / 2
             
             // Vertical line from parent down
@@ -914,7 +626,7 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
               />
             )
             
-            // Horizontal line to align with child
+            // Horizontal line to child X position
             connections.push(
               <line
                 key={`${node.id}-${child.id}-h`}
@@ -960,7 +672,7 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
               />
             )
             
-            // Relay Contact Open symbol
+            // Circuit Breaker symbol
             connections.push(
               <g key={`${node.id}-${child.id}-breaker`} transform={`translate(${endX}, ${midY + 10})`}>
                 {/* Line segment from top to fixed contact */}
@@ -1064,24 +776,59 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
       }}>
         <div style={{ fontSize: '64px', marginBottom: '20px' }}>📊</div>
         <h4 style={{ color: '#fff', marginBottom: '10px' }}>Belum ada diagram</h4>
-        <p style={{ color: '#888' }}>Silakan buat struktur tree terlebih dahulu menggunakan builder di atas.</p>
+        <p style={{ color: '#888' }}>Silakan tunggu data dimuat dari device tree.</p>
       </div>
     )
   }
 
-  const svgWidth = Math.max(1600, positionedNodes.length * 300)
-  const svgHeight = 1000
+  // Calculate SVG dimensions based on actual positioned nodes
+  const maxX = Math.max(...positionedNodes.map(n => n.position?.x || 0))
+  const maxY = Math.max(...positionedNodes.map(n => n.position?.y || 0))
+  const svgWidth = Math.max(1600, maxX + 400) // Add padding
+  const svgHeight = Math.max(800, maxY + 300) // Add padding
 
   return (
-    <div style={{ 
-      width: '100%', 
-      height: '700px', 
-      overflow: 'auto', 
-      background: 'linear-gradient(135deg, rgba(10, 15, 30, 0.8), rgba(20, 25, 40, 0.8))',
-      borderRadius: '12px',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-    }}>
+    <div 
+      className="sld-scroll-container"
+      style={{ 
+        width: '100%', 
+        height: '700px', 
+        overflow: 'auto', 
+        background: 'linear-gradient(135deg, rgba(10, 15, 30, 0.8), rgba(20, 25, 40, 0.8))',
+        borderRadius: '12px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+      }}
+    >
+      <style>{`
+        /* Custom scrollbar styling for better visibility */
+        .sld-scroll-container::-webkit-scrollbar {
+          width: 14px;
+          height: 14px;
+        }
+        .sld-scroll-container::-webkit-scrollbar-track {
+          background: rgba(20, 25, 40, 0.95);
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .sld-scroll-container::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 10px;
+          border: 2px solid rgba(20, 25, 40, 0.95);
+          box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+        .sld-scroll-container::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, #7c8ff0 0%, #8a5bb0 100%);
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+          cursor: pointer;
+        }
+        .sld-scroll-container::-webkit-scrollbar-thumb:active {
+          background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+        }
+        .sld-scroll-container::-webkit-scrollbar-corner {
+          background: rgba(20, 25, 40, 0.95);
+        }
+      `}</style>
       <svg
         width={svgWidth}
         height={svgHeight}
@@ -1199,39 +946,115 @@ const SLDRenderer: React.FC<SLDRendererProps> = ({ nodes }) => {
 // Main Component
 const SingleLineView: React.FC = () => {
   const [treeData, setTreeData] = useState<ElectricalNode[]>([])
-  const [showDiagram, setShowDiagram] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSaveTree = (tree: ElectricalNode[]) => {
-    setTreeData(tree)
-    setShowDiagram(true)
+  // Fetch device tree from API
+  const fetchDeviceTree = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await apiClient.get('/monitoring/device-tree')
+      const apiData = Array.isArray(response.data) ? response.data : []
+      const transformedData = transformDeviceTreeToElectricalNodes(apiData)
+      setTreeData(transformedData)
+    } catch (e: any) {
+      setError(e.message || 'Failed to load device tree')
+      console.error('Error fetching device tree:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleEditTree = () => {
-    setShowDiagram(false)
-  }
-
+  // Initial fetch on mount
   useEffect(() => {
-    // Update electrical data every 2 seconds
-    const interval = setInterval(() => {
-      setTreeData((prev) => updateAllData(prev))
-    }, 2000)
-
-    return () => clearInterval(interval)
+    fetchDeviceTree()
   }, [])
 
-  const updateAllData = (nodes: ElectricalNode[]): ElectricalNode[] => {
-    return nodes.map((node) => ({
-      ...node,
-      data: generateElectricalData(),
-      children: updateAllData(node.children),
-    }))
-  }
+  // Note: Removed auto-refresh interval. Use manual refresh button to update real-time metrics.
 
   return (
     <div className="row">
       <div className="col-xl-12">
-        {!showDiagram ? (
-          <TreeBuilder onSave={handleSaveTree} initialData={treeData} />
+        {loading ? (
+          <Card 
+            className="custom-card" 
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(20, 25, 40, 0.95), rgba(30, 35, 50, 0.95))',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+              minHeight: '400px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Card.Body style={{ textAlign: 'center', padding: '60px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px', animation: 'spin 1s linear infinite' }}>⚡</div>
+              <h5 style={{ color: '#fff', marginBottom: '10px' }}>Loading Device Tree...</h5>
+              <p style={{ color: '#888', fontSize: '14px' }}>Fetching organization, facility, and device data</p>
+              <style jsx>{`
+                @keyframes spin {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+              `}</style>
+            </Card.Body>
+          </Card>
+        ) : error ? (
+          <Card 
+            className="custom-card" 
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(20, 25, 40, 0.95), rgba(30, 35, 50, 0.95))',
+              border: '1px solid rgba(255, 68, 68, 0.3)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+              minHeight: '400px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Card.Body style={{ textAlign: 'center', padding: '60px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚠️</div>
+              <h5 style={{ color: '#ff4444', marginBottom: '10px' }}>Error Loading Data</h5>
+              <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>{error}</p>
+              <Button 
+                variant="outline-light"
+                onClick={fetchDeviceTree}
+                style={{ padding: '10px 30px', fontWeight: '600' }}
+              >
+                🔄 Retry
+              </Button>
+            </Card.Body>
+          </Card>
+        ) : treeData.length === 0 ? (
+          <Card 
+            className="custom-card" 
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(20, 25, 40, 0.95), rgba(30, 35, 50, 0.95))',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+              minHeight: '400px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Card.Body style={{ textAlign: 'center', padding: '60px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px' }}>📊</div>
+              <h5 style={{ color: '#fff', marginBottom: '10px' }}>No Data Available</h5>
+              <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>
+                No organizations, facilities, or devices found in the system
+              </p>
+              <Button 
+                variant="outline-light"
+                onClick={fetchDeviceTree}
+                style={{ padding: '10px 30px', fontWeight: '600' }}
+              >
+                🔄 Refresh
+              </Button>
+            </Card.Body>
+          </Card>
         ) : (
           <>
             <Card 
@@ -1246,7 +1069,7 @@ const SingleLineView: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <Button 
                     variant="outline-light"
-                    onClick={handleEditTree}
+                    onClick={fetchDeviceTree}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1258,15 +1081,13 @@ const SingleLineView: React.FC = () => {
                     }}
                     onMouseOver={(e) => {
                       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
-                      e.currentTarget.style.transform = 'translateX(-5px)'
                     }}
                     onMouseOut={(e) => {
                       e.currentTarget.style.background = 'transparent'
-                      e.currentTarget.style.transform = 'translateX(0)'
                     }}
                   >
-                    <span style={{ fontSize: '18px' }}>←</span>
-                    <span>Edit Structure</span>
+                    <span style={{ fontSize: '18px' }}>🔄</span>
+                    <span>Refresh Data</span>
                   </Button>
                   <div style={{ 
                     flex: 1, 
@@ -1293,6 +1114,16 @@ const SingleLineView: React.FC = () => {
                     />
                     <span style={{ color: '#38ef7d', fontSize: '14px', fontWeight: '600' }}>
                       Live Data
+                    </span>
+                  </div>
+                  <div style={{
+                    padding: '8px 16px',
+                    background: 'rgba(102, 126, 234, 0.1)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(102, 126, 234, 0.3)',
+                  }}>
+                    <span style={{ color: '#667eea', fontSize: '14px', fontWeight: '600' }}>
+                      {treeData.length} Org • {treeData.reduce((acc, org) => acc + (org.children?.length || 0), 0)} Facilities
                     </span>
                   </div>
                 </div>

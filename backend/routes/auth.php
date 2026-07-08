@@ -25,6 +25,8 @@ Route::middleware('auth.session')->group(function () {
     Route::get('/users/dashboard/users-by-role', [UserDashboardController::class, 'usersByRole']);
     Route::get('/users/dashboard/recent-users', [UserDashboardController::class, 'recentUsers']);
     Route::post('/users/dashboard/users', [UserDashboardController::class, 'storeUser']);
+    Route::get('/users/dashboard/users/{id}', [UserDashboardController::class, 'showUser']);
+    Route::put('/users/dashboard/users/{id}', [UserDashboardController::class, 'updateUser']);
     Route::post('/users/dashboard/roles', [UserDashboardController::class, 'storeRole']);
     Route::get('/sales/customers', [SalesDataController::class, 'customers']);
     Route::post('/sales/customers', [SalesDataController::class, 'storeCustomer']);

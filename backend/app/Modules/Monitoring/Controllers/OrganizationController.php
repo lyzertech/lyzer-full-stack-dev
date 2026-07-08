@@ -4,6 +4,7 @@ namespace App\Modules\Monitoring\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Monitoring\Concerns\ResolvesAuthRole;
+use App\Modules\Monitoring\Models\Acuvim;
 use App\Modules\Monitoring\Models\Organization;
 use App\Modules\Monitoring\Services\DeviceStatusResolver;
 use App\Modules\Monitoring\Services\MonitoringCache;
@@ -38,6 +39,30 @@ class OrganizationController extends Controller
                     ->flatMap(fn ($org) => $org->facilities->flatMap->devices);
 
                 $this->statusResolver->applyToCollection($devices);
+
+                // Attach latest metrics from Acuvim to each device
+                foreach ($organizations as $org) {
+                    foreach ($org->facilities as $facility) {
+                        foreach ($facility->devices as $device) {
+                            // Fetch latest metrics for this device
+                            $metrics = Acuvim::where('device_name', $device->name)
+                                ->where('device_serial', $device->device_code)
+                                ->orderBy('Timestamp', 'desc')
+                                ->select(['Vlavg_V', 'Iavg_A', 'Psum_kW', 'Freq_Hz', 'PF', 'Timestamp'])
+                                ->first();
+                            
+                            // Attach formatted metrics to device
+                            $device->latest_metrics = $metrics ? [
+                                'voltage' => $metrics->Vlavg_V,
+                                'current' => $metrics->Iavg_A,
+                                'power' => $metrics->Psum_kW,
+                                'frequency' => $metrics->Freq_Hz,
+                                'powerFactor' => $metrics->PF,
+                                'timestamp' => $metrics->Timestamp,
+                            ] : null;
+                        }
+                    }
+                }
 
                 return $organizations->toArray();
             }

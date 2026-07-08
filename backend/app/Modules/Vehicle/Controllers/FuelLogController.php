@@ -116,13 +116,13 @@ class FuelLogController extends Controller
 
         $query = "
             SELECT
-                DATE_FORMAT(fuel_date, '%Y-%m') as month,
+                TO_CHAR(fuel_date, 'YYYY-MM') as month,
                 SUM(liters) as total_liters,
                 SUM(total_cost) as total_cost,
                 AVG(km_per_liter) as avg_km_per_liter,
                 COUNT(*) as fill_count
             FROM vehicle_fuel_logs
-            WHERE fuel_date >= DATE_SUB(NOW(), INTERVAL ? MONTH)
+            WHERE fuel_date >= CURRENT_DATE - CAST(? || ' months' AS INTERVAL)
         ";
         $params = [$months];
 
@@ -131,7 +131,7 @@ class FuelLogController extends Controller
             $params[] = $vehicleId;
         }
 
-        $query .= ' GROUP BY DATE_FORMAT(fuel_date, \'%Y-%m\') ORDER BY month ASC';
+        $query .= ' GROUP BY TO_CHAR(fuel_date, \'YYYY-MM\') ORDER BY month ASC';
 
         return response()->json(DB::select($query, $params));
     }

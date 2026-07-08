@@ -51,7 +51,7 @@ class DeviceStatusResolver
 
         foreach ($pairs->chunk(self::CHUNK_SIZE) as $chunk) {
             $query = DB::table('monitoring_acuvim')
-                ->selectRaw('device_name, device_serial, MAX(`Timestamp`) as latest_ts')
+                ->selectRaw('device_name, device_serial, MAX("Timestamp") as latest_ts')
                 ->whereNotNull('device_serial')
                 ->where('device_serial', '!=', '')
                 ->where(function ($builder) use ($chunk) {

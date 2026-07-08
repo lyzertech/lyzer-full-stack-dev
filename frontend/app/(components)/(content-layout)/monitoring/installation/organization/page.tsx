@@ -491,10 +491,36 @@ const OrganizationPage = () => {
                   }
                   className="border-default"
                 >
-                  <option>Manufacturing</option>
+                  <option>Aerospace & Defense</option>
+                  <option>Agriculture & Food</option>
+                  <option>Automotive</option>
+                  <option>Banking & Insurance</option>
+                  <option>Chemical</option>
+                  <option>Construction & Real Estate</option>
+                  <option>Consulting</option>
+                  <option>Education</option>
                   <option>Energy & Utilities</option>
+                  <option>Environmental Services</option>
+                  <option>Financial Services</option>
+                  <option>Government/Public Sector</option>
                   <option>Healthcare</option>
+                  <option>Hospitality & Tourism</option>
+                  <option>Legal Services</option>
                   <option>Logistics</option>
+                  <option>Manufacturing</option>
+                  <option>Media & Entertainment</option>
+                  <option>Mining</option>
+                  <option>Non-Profit Organization</option>
+                  <option>Oil & Gas</option>
+                  <option>Pharmaceutical</option>
+                  <option>Research & Development</option>
+                  <option>Retail & E-commerce</option>
+                  <option>Sports & Recreation</option>
+                  <option>Technology/IT</option>
+                  <option>Telecommunications</option>
+                  <option>Textile & Apparel</option>
+                  <option>Transportation</option>
+                  <option>Other</option>
                 </Form.Select>
               </Col>
               <Col md={6}>

@@ -1,6 +1,12 @@
 <?php
 
+use App\Modules\System\Controllers\LicenseController;
 use Illuminate\Support\Facades\Route;
+
+// ─── System License Status (public, but protected by CheckLicense middleware) ─
+Route::prefix('v1/system')->group(function () {
+    Route::get('/license/status', [LicenseController::class, 'status']);
+});
 
 // ─── Finance (authenticated) ──────────────────────────────────────────────
 // Exposes all finance endpoints at /api/v1/finance/* without subdomain,

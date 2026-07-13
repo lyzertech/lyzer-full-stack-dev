@@ -11,17 +11,21 @@ interface AcuvimLatestRow {
   Vlavg_V?: number | string
   Iavg_A?: number | string
   Psum_kW?: number | string
+  Qsum_kvar?: number | string
+  PF?: number | string
 }
 
 interface MetricRow {
-  key: keyof Pick<AcuvimLatestRow, 'Vlavg_V' | 'Iavg_A' | 'Psum_kW'>
+  key: keyof Pick<AcuvimLatestRow, 'Vlavg_V' | 'Iavg_A' | 'Psum_kW' | 'Qsum_kvar' | 'PF'>
   label: string
 }
 
 const METRIC_ROWS: MetricRow[] = [
-  { key: 'Vlavg_V', label: 'Vl avg' },
-  { key: 'Iavg_A', label: 'I avg' },
-  { key: 'Psum_kW', label: 'P sum' },
+  { key: 'Vlavg_V', label: 'Voltage Line Average' },
+  { key: 'Iavg_A', label: 'Current Average' },
+  { key: 'Psum_kW', label: 'Active\nPower Total' },
+  { key: 'Qsum_kvar', label: 'Reactive\nPower Total' },
+  { key: 'PF', label: 'Power Factor' },
 ]
 
 const toNumber = (value: unknown): number | null => {
@@ -123,15 +127,16 @@ const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => 
     checkFont()
   }, [])
 
+  const deviceLabel = device?.label ?? 'No device selected'
   const subtitle = latestRow?.Timestamp
-    ? formatTimestamp(String(latestRow.Timestamp))
+    ? `${deviceLabel} | ${formatTimestamp(String(latestRow.Timestamp))}`
     : device
-      ? 'No data timestamp'
-      : 'Select a device'
+      ? `${deviceLabel} | No data available`
+      : 'Select a device to view metrics'
 
   return (
     <DashboardWidgetCard
-      title={device?.label ?? 'Select device'}
+      title="Power Metrics"
       subtitle={subtitle}
       icon="bi-speedometer2"
     >
@@ -158,8 +163,13 @@ const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => 
           <div>
             {METRIC_ROWS.map((row, index) => {
               const value = toNumber(latestRow?.[row.key])
-              const unit = row.key === 'Vlavg_V' ? 'V' : row.key === 'Iavg_A' ? 'A' : 'kW'
-              const colors = ['primary', 'success', 'warning']
+              const unit = 
+                row.key === 'Vlavg_V' ? 'V' : 
+                row.key === 'Iavg_A' ? 'A' : 
+                row.key === 'Psum_kW' ? 'kW' :
+                row.key === 'Qsum_kvar' ? 'kvar' :
+                '' // PF has no unit
+              const colors = ['primary', 'success', 'warning', 'info', 'danger']
               const color = colors[index % colors.length]
               
               return (
@@ -167,7 +177,7 @@ const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => 
                   <div className="card-body p-3">
                     <div className="row align-items-center">
                       <div className="col">
-                        <div className={`text-${color} small fw-bold text-uppercase`}>
+                        <div className={`text-${color} small fw-bold text-uppercase`} style={{ whiteSpace: 'pre-line' }}>
                           {row.label}
                         </div>
                       </div>

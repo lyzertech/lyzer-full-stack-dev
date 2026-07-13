@@ -34,6 +34,33 @@ async function request(path: string, options: RequestInit = {}) {
     data = text;
   }
 
+  // Handle license errors (403 with license_required)
+  if (response.status === 403) {
+    const errorCode =
+      typeof data === 'object' && data !== null && 'error' in data
+        ? String((data as { error: unknown }).error)
+        : '';
+
+    // If it's a license error, clear license cache
+    // LicenseGuard will handle showing NoLicensePage on next render
+    if (errorCode === 'license_required' && typeof window !== 'undefined') {
+      localStorage.removeItem('system_license_status');
+      // Don't reload - let LicenseGuard handle the UI transition
+    }
+
+    const message =
+      typeof data === 'object' && data !== null && 'message' in data
+        ? String((data as { message: unknown }).message)
+        : 'Forbidden';
+
+    const error = new Error(message);
+    (error as Error & { response?: { status: number; data: unknown } }).response = {
+      status: 403,
+      data,
+    };
+    throw error;
+  }
+
   if (response.status === 401) {
     const message =
       typeof data === 'object' && data !== null && 'message' in data

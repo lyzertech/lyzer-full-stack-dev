@@ -16,7 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\ModuleServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        // Global license check middleware - runs before all API routes
         $middleware->api(prepend: [
+            \App\Http\Middleware\CheckLicense::class,
             \App\Http\Middleware\ResolveBearerToken::class,
         ]);
 

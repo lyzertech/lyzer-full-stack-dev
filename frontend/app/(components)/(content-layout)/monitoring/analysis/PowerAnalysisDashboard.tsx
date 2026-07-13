@@ -148,9 +148,14 @@ function extractEnergyVals(r: AcuvimRow): EnergyVals {
   }
 }
 
+/**
+ * Calculate energy delta between two cumulative readings.
+ * Returns the consumption/generation for the period between readings.
+ */
 function energyDelta(current: number | null, previous: number | null): number | null {
   if (current === null || previous === null) return null
-  return Number(Math.max(0, current - previous).toFixed(2))
+  const delta = Math.max(0, current - previous)
+  return Number(delta.toFixed(2))
 }
 
 function pushEnergyDeltas(
@@ -195,8 +200,6 @@ function buildEnergyCharts(
   const byTime = buildByTime(rows, intervalMin)
   const baselineVals = baselineRow ? extractEnergyVals(baselineRow) : null
   const firstDataIdx = slots.findIndex((s) => byTime.has(s))
-  const skipDeltaAtIdx =
-    baselineVals !== null && firstDataIdx > 0 ? firstDataIdx : -1
 
   const arrays = {
     epImp: [] as SingleData[],
@@ -213,26 +216,24 @@ function buildEnergyCharts(
     const slot = slots[idx]
     const r = byTime.get(slot)
 
-    // 00:00 — consumption vs previous day (leftmost point on chart)
-    if (idx === 0 && baselineVals && firstDataIdx >= 0) {
-      const firstR = byTime.get(slots[firstDataIdx])!
-      pushEnergyDeltas(arrays, slot, extractEnergyVals(firstR), baselineVals)
-      lastVals = extractEnergyVals(firstR)
-      lastFilledIdx = firstDataIdx
-      continue
-    }
-
     if (r) {
-      if (idx === skipDeltaAtIdx) {
-        pushEnergyNulls(arrays, slot)
+      // Calculate delta only if we have a previous reading from the immediately preceding slot
+      const consecutive = lastFilledIdx >= 0 && idx - lastFilledIdx === 1
+      
+      // Special case: first data point of the day can use baseline from previous day
+      const canUseBaseline = idx === firstDataIdx && baselineVals !== null
+      
+      if (canUseBaseline) {
+        // Use baseline for the first data point regardless of which time slot it's in
+        pushEnergyDeltas(arrays, slot, extractEnergyVals(r), baselineVals)
+      } else if (lastVals && consecutive) {
+        // Normal case: consecutive slots
+        pushEnergyDeltas(arrays, slot, extractEnergyVals(r), lastVals)
       } else {
-        const consecutive = lastFilledIdx >= 0 && idx - lastFilledIdx === 1
-        if (lastVals && consecutive) {
-          pushEnergyDeltas(arrays, slot, extractEnergyVals(r), lastVals)
-        } else {
-          pushEnergyNulls(arrays, slot)
-        }
+        // Gap in data or non-consecutive: show null to avoid misleading deltas
+        pushEnergyNulls(arrays, slot)
       }
+      
       lastVals = extractEnergyVals(r)
       lastFilledIdx = idx
     } else {
@@ -384,8 +385,9 @@ const PowerAnalysisDashboard: React.FC = () => {
       const res = await apiClient.get(
         `/monitoring/acuvim/analysis-day?${buildAnalysisDayParams(deviceName, deviceSerial, date, interval)}`,
       )
-      const todayRows = Array.isArray(res.data?.data) ? res.data.data : []
-      const baseline = res.data?.previous_baseline ?? null
+      const resData = typeof res.data === 'object' && res.data !== null ? res.data : {}
+      const todayRows = Array.isArray(resData.data) ? resData.data : []
+      const baseline = (resData.previous_baseline as AcuvimRow | undefined) ?? null
       analysisDayCache.set(cacheKey, {
         rows: todayRows,
         energyBaseline: baseline,
@@ -444,7 +446,7 @@ const PowerAnalysisDashboard: React.FC = () => {
     [rows, slots, intervalMin, energyBaseline]
   )
   const mappedPointCount = rows.length
-  const latest = rows[0] // newest record (desc order from API)
+  const latest = rows[rows.length - 1] // newest record (ascending order from API)
   const statusInfo = statusBadge(selectedDevice?.status, theme.isDark)
   const now = new Date().toLocaleTimeString('en-GB')
   const panelTitle: React.CSSProperties = {
@@ -577,18 +579,18 @@ const PowerAnalysisDashboard: React.FC = () => {
 
           <div style={{ color: theme.textDim, fontSize: 13 }}>{now}</div>
 
-          <button
+          {/* <button
             onClick={() => { setIsLive(v => !v) }}
             disabled={!isToday}
             style={{ background: isLive && isToday ? (theme.isDark ? '#052e16' : '#dcfce7') : theme.tabBg, border: `1px solid ${isLive && isToday ? '#22c55e' : theme.border}`, borderRadius: 4, color: isLive && isToday ? '#22c55e' : theme.textDim, fontSize: 14, padding: '8px 13px', cursor: isToday ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 4, opacity: isToday ? 1 : 0.5 }}
           >
             <LiveDot live={isLive && isToday} />
             {isLive && isToday ? 'LIVE' : 'PAUSED'}
-          </button>
+          </button> */}
 
           {selectedDevice?.meta?.device_name && (
             <button
-              onClick={() => fetchData(selectedDevice.meta!.device_name!, selectedDate, intervalMin)}
+              onClick={() => fetchData(selectedDevice.meta!.device_name!, selectedDevice.meta!.device_code, selectedDate, intervalMin)}
               title="Refresh now"
               style={{ background: theme.panelBg, border: `1px solid ${theme.border}`, borderRadius: 4, color: theme.textDim, fontSize: 15, padding: '8px 11px', cursor: 'pointer' }}
             >

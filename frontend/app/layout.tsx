@@ -6,6 +6,7 @@ import { Provider } from 'react-redux'
 import { store } from '@/shared/redux/store';
 import { Initialload } from '@/shared/contextapi';
 import { AuthProvider } from '@/shared/auth/AuthContext';
+import { LicenseGuard } from '@/shared/license/LicenseGuard';
 import { LocalStorageBackup } from '@/shared/data/switcherdata/switcherdata'
 import {
   data$,
@@ -92,11 +93,13 @@ const RootLayout = ({ children, }: any) => {
       </head>
       <body className={`${localVariable.body ? localVariable.body : ''}`}>
         <Provider store={store}>
-          <AuthProvider>
-            <Initialload.Provider value={{ pageloading, setpageloading }}>
-              {children}
-            </Initialload.Provider>
-          </AuthProvider>
+          <LicenseGuard>
+            <AuthProvider>
+              <Initialload.Provider value={{ pageloading, setpageloading }}>
+                {children}
+              </Initialload.Provider>
+            </AuthProvider>
+          </LicenseGuard>
         </Provider>
         <ToastContainer />
       </body>

@@ -15,11 +15,11 @@ const ARC_COLORS = [
 
 const ARC_LABELS = ['Phase A (L1)', 'Phase B (L2)', 'Phase C (L3)']
 
-/** Speedometer rings: outer → inner (phase A → C) */
+/** Speedometer rings: outer → inner (L1 → L3) */
 const GAUGE_RINGS = [
-  { inner: '62%', outer: '72%' },
-  { inner: '74%', outer: '84%' },
-  { inner: '86%', outer: '96%' },
+  { inner: '86%', outer: '96%' }, // Outermost - L1
+  { inner: '74%', outer: '84%' }, // Middle - L2
+  { inner: '62%', outer: '72%' }, // Innermost - L3
 ]
 
 const START_ANGLE = 180
@@ -146,11 +146,12 @@ const CurrentGaugeWidget: React.FC<CurrentGaugeWidgetProps> = ({ device }) => {
     [currents],
   )
 
+  const deviceLabel = device?.label ?? 'No device selected'
   const subtitle = latestRow?.Timestamp
-    ? formatTimestamp(String(latestRow.Timestamp))
+    ? `${deviceLabel} | ${formatTimestamp(String(latestRow.Timestamp))}`
     : device
-      ? 'No data timestamp'
-      : 'Select a device'
+      ? `${deviceLabel} | No data available`
+      : 'Select a device to view measurements'
 
   const tickCount = 11
   const cx = 150
@@ -158,7 +159,7 @@ const CurrentGaugeWidget: React.FC<CurrentGaugeWidgetProps> = ({ device }) => {
 
   return (
     <DashboardWidgetCard
-      title={device?.label ?? 'Select device'}
+      title="Current Measurement"
       subtitle={subtitle}
       icon="bi-cpu"
     >

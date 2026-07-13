@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Spinner } from 'react-bootstrap'
@@ -16,18 +16,18 @@ import { apiClient } from '@/lib/api-client'
 import type { DeviceNode } from '../utils/deviceTree'
 import DashboardWidgetCard from './DashboardWidgetCard'
 
-interface VoltageDataPoint {
+interface CurrentDataPoint {
   time: string
-  V12?: number | null
-  V23?: number | null
-  V31?: number | null
+  I1?: number | null
+  I2?: number | null
+  I3?: number | null
 }
 
 interface AcuvimDataRow {
   Timestamp?: string
-  V12?: number | string
-  V23?: number | string
-  V31?: number | string
+  I1?: number | string
+  I2?: number | string
+  I3?: number | string
 }
 
 const toNumber = (value: unknown): number | null => {
@@ -60,17 +60,17 @@ const formatTimeOnly = (timestamp: string): string => {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-interface LineChartWidgetProps {
+interface CurrentTrendsWidgetProps {
   device?: DeviceNode | null
 }
 
-const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
+const CurrentTrendsWidget: React.FC<CurrentTrendsWidgetProps> = ({ device }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [chartData, setChartData] = useState<VoltageDataPoint[]>([])
+  const [chartData, setChartData] = useState<CurrentDataPoint[]>([])
   const [lastUpdate, setLastUpdate] = useState<string | null>(null)
 
-  const fetchVoltageData = useCallback(async () => {
+  const fetchCurrentData = useCallback(async () => {
     const deviceName = device?.meta?.device_name ?? device?.label
     if (!deviceName) {
       setChartData([])
@@ -120,18 +120,18 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
 
       if (rows.length === 0) {
         setChartData([])
-        setError('No voltage data available')
+        setError('No current data available')
         setLastUpdate(null)
         return
       }
 
       // Transform data to chart format
-      const transformedData: VoltageDataPoint[] = rows
+      const transformedData: CurrentDataPoint[] = rows
         .map((row) => ({
           time: row.Timestamp ? formatTimeOnly(String(row.Timestamp)) : '',
-          V12: toNumber(row.V12),
-          V23: toNumber(row.V23),
-          V31: toNumber(row.V31),
+          I1: toNumber(row.I1),
+          I2: toNumber(row.I2),
+          I3: toNumber(row.I3),
         }))
         .filter((point) => point.time !== '')
         .reverse() // Most recent last
@@ -140,7 +140,7 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
       setLastUpdate(rows[0]?.Timestamp ? formatTimestamp(String(rows[0].Timestamp)) : null)
     } catch (err: any) {
       setChartData([])
-      setError(err.response?.data?.message || err.message || 'Failed to load voltage data')
+      setError(err.response?.data?.message || err.message || 'Failed to load current data')
       setLastUpdate(null)
     } finally {
       setLoading(false)
@@ -148,29 +148,27 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
   }, [device])
 
   useEffect(() => {
-    fetchVoltageData()
-  }, [fetchVoltageData])
+    fetchCurrentData()
+  }, [fetchCurrentData])
 
   // Calculate dynamic Y-axis domain based on data
   const yAxisDomain = useMemo(() => {
-    if (chartData.length === 0) return [0, 250]
+    if (chartData.length === 0) return [0, 20]
 
     const allValues: number[] = []
     chartData.forEach((point) => {
-      if (point.V12 !== null) allValues.push(point.V12)
-      if (point.V23 !== null) allValues.push(point.V23)
-      if (point.V31 !== null) allValues.push(point.V31)
+      if (point.I1 !== null) allValues.push(point.I1)
+      if (point.I2 !== null) allValues.push(point.I2)
+      if (point.I3 !== null) allValues.push(point.I3)
     })
 
-    if (allValues.length === 0) return [0, 250]
+    if (allValues.length === 0) return [0, 20]
 
-    const minValue = Math.min(...allValues)
     const maxValue = Math.max(...allValues)
-    const range = maxValue - minValue
-    const padding = range * 0.1 // 10% padding
+    const padding = maxValue * 0.1 // 10% padding
 
     return [
-      Math.floor(minValue - padding),
+      0, // Current cannot be negative
       Math.ceil(maxValue + padding),
     ]
   }, [chartData])
@@ -180,20 +178,20 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
     ? `${deviceLabel} | ${lastUpdate}`
     : device
       ? `${deviceLabel} | No data available`
-      : 'Select a device to view voltage trends'
+      : 'Select a device to view current trends'
 
   return (
     <DashboardWidgetCard
-      title="Voltage Trends"
+      title="Current Trends"
       subtitle={subtitle}
-      icon="bi-graph-up"
+      icon="bi-lightning-charge"
       bodyClassName="pb-2"
     >
       <div style={{ height: 300 }}>
         {loading ? (
           <div className="d-flex justify-content-center align-items-center h-100">
             <Spinner size="sm" animation="border" className="me-2" />
-            <span className="text-muted">Loading voltage data...</span>
+            <span className="text-muted">Loading current data...</span>
           </div>
         ) : error ? (
           <div className="d-flex flex-column justify-content-center align-items-center h-100">
@@ -202,7 +200,7 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
               <button
                 type="button"
                 className="btn btn-sm btn-light border"
-                onClick={fetchVoltageData}
+                onClick={fetchCurrentData}
               >
                 Retry
               </button>
@@ -210,7 +208,7 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
           </div>
         ) : chartData.length === 0 ? (
           <div className="d-flex justify-content-center align-items-center h-100 text-muted">
-            {device ? 'No data to display' : 'Select a device to view voltage trends'}
+            {device ? 'No data to display' : 'Select a device to view current trends'}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -237,7 +235,7 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
                 axisLine={false}
                 tickLine={false}
                 width={45}
-                label={{ value: 'Voltage (V)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'var(--text-muted)' } }}
+                label={{ value: 'Current (A)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'var(--text-muted)' } }}
               />
               <Tooltip
                 contentStyle={{
@@ -253,13 +251,13 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
                   
                   // Map dataKey to descriptive label
                   const labelMap: Record<string, string> = {
-                    V12: 'Voltage Line 1-2',
-                    V23: 'Voltage Line 2-3',
-                    V31: 'Voltage Line 3-1',
+                    I1: 'Current Phase A (L1)',
+                    I2: 'Current Phase B (L2)',
+                    I3: 'Current Phase C (L3)',
                   }
                   
                   const label = labelMap[name as string] || name
-                  return [`${value.toFixed(2)} V`, label]
+                  return [`${value.toFixed(2)} A`, label]
                 }}
               />
               <Legend 
@@ -268,8 +266,8 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
               />
               <Line
                 type="monotone"
-                dataKey="V12"
-                name="V12"
+                dataKey="I1"
+                name="Current Phase A (L1)"
                 stroke="#dc3545"
                 strokeWidth={2}
                 dot={false}
@@ -278,8 +276,8 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
               />
               <Line
                 type="monotone"
-                dataKey="V23"
-                name="V23"
+                dataKey="I2"
+                name="Current Phase B (L2)"
                 stroke="#fd7e14"
                 strokeWidth={2}
                 dot={false}
@@ -288,8 +286,8 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
               />
               <Line
                 type="monotone"
-                dataKey="V31"
-                name="V31"
+                dataKey="I3"
+                name="Current Phase C (L3)"
                 stroke="#0d6efd"
                 strokeWidth={2}
                 dot={false}
@@ -304,5 +302,4 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
   )
 }
 
-export default LineChartWidget
-
+export default CurrentTrendsWidget

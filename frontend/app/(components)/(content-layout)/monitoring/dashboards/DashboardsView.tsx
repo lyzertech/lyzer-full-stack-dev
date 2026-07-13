@@ -6,9 +6,9 @@ import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import DeviceSelector from '../components/DeviceSelector'
 import CurrentGaugeWidget from '../components/CurrentGaugeWidget'
 import LineChartWidget from '../components/LineChartWidget'
-import PieChartWidget from '../components/PieChartWidget'
-import SingleValueWidget from '../components/SingleValueWidget'
-import TabularWidget from '../components/TabularWidget'
+import CurrentTrendsWidget from '../components/CurrentTrendsWidget'
+import PhasorDiagramWidget from '../components/PhasorDiagramWidget'
+import QuadrantPhasorWidget from '../components/QuadrantPhasorWidget'
 import DeviceMetricsWidget from '../components/DeviceMetricsWidget'
 import type { DeviceNode } from '../utils/deviceTree'
 
@@ -55,28 +55,17 @@ const DashboardsView: React.FC = () => {
           <DeviceMetricsWidget device={selectedDevice} />
         </Col>
         <Col xl={3} lg={6} md={6}>
-          <PieChartWidget />
+          <PhasorDiagramWidget device={selectedDevice} />
         </Col>
         <Col xl={3} lg={6} md={6}>
-          <div className="d-flex flex-column gap-3 h-100">
-            <SingleValueWidget
-              title={deviceName}
-              subtitle="04-06-2019 06:38:02+01:00"
-              value="4,549.67 Volts 1 (V)"
-            />
-            <SingleValueWidget
-              title={deviceName}
-              subtitle="Yesterday"
-              value="4,610.65 Volts 1 (V)"
-            />
-          </div>
+          <QuadrantPhasorWidget device={selectedDevice} />
         </Col>
 
-        <Col xl={7} lg={12}>
+        <Col xl={6} lg={12}>
           <LineChartWidget device={selectedDevice} />
         </Col>
-        <Col xl={5} lg={12}>
-          <TabularWidget selectedDeviceName={deviceName} />
+        <Col xl={6} lg={12}>
+          <CurrentTrendsWidget device={selectedDevice} />
         </Col>
       </Row>
     </Fragment>

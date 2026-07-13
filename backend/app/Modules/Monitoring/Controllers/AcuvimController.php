@@ -42,6 +42,8 @@ class AcuvimController extends Controller
 
     /**
      * Keep the latest sample per interval bucket for one day.
+     * Normalizes timestamps to bucket slot times (e.g., 23:25 → 23:00 for 1h interval).
+     * Excludes readings that round to the next day (e.g., 23:55 → 00:00) BEFORE bucketing.
      *
      * @param  \Illuminate\Support\Collection<int, object>  $rows
      * @return array<int, object>
@@ -51,13 +53,35 @@ class AcuvimController extends Controller
         $buckets = [];
         foreach ($rows as $row) {
             $key = $this->slotKey((string) $row->Timestamp, $intervalMin);
+            $dt = \Carbon\Carbon::parse($row->Timestamp);
+            [$hours, $minutes] = explode(':', $key);
+            
+            $slotHour = (int)$hours;
+            $originalHour = $dt->hour;
+            
+            // Exclude wraparound BEFORE adding to bucket
+            // Late evening readings (22:xx-23:xx) rounding to early morning (00:xx-02:xx)
+            // belong to the NEXT day, so skip them
+            if ($slotHour <= 2 && $originalHour >= 22) {
+                continue; // Skip this reading entirely
+            }
+            
             if (! isset($buckets[$key]) || $row->Timestamp > $buckets[$key]->Timestamp) {
                 $buckets[$key] = $row;
             }
         }
 
+        // Normalize timestamps to bucket slot times
+        foreach ($buckets as $slotKey => $row) {
+            $dt = \Carbon\Carbon::parse($row->Timestamp);
+            [$hours, $minutes] = explode(':', $slotKey);
+            $normalizedDt = $dt->copy()->setTime((int)$hours, (int)$minutes, 0);
+            $row->Timestamp = $normalizedDt->format('Y-m-d H:i:s');
+        }
+
         $values = array_values($buckets);
-        usort($values, fn ($a, $b) => strcmp((string) $b->Timestamp, (string) $a->Timestamp));
+        // Sort ascending (chronological order: 00:00, 01:00, 02:00, ...)
+        usort($values, fn ($a, $b) => strcmp((string) $a->Timestamp, (string) $b->Timestamp));
 
         return $values;
     }
@@ -132,6 +156,52 @@ class AcuvimController extends Controller
         usort($rows, fn ($a, $b) => strcmp((string) $a->Timestamp, (string) $b->Timestamp));
 
         return $rows[array_key_last($rows)];
+    }
+
+    /**
+     * Find the baseline reading from the previous day that aligns with the interval.
+     * For proper energy delta calculation, we need the reading at the last interval slot
+     * before midnight (e.g., 23:00 for 1h, 23:30 for 30m, 23:55 for 5m).
+     *
+     * @param  array<int, object>  $rows  Bucketed rows from previous day
+     * @param  int  $intervalMin  Interval in minutes (5, 10, 15, 30, 60)
+     * @return object|null
+     */
+    private function lastIntervalBaseline(array $rows, int $intervalMin): ?object
+    {
+        if ($rows === []) {
+            return null;
+        }
+
+        // Calculate the last interval slot before midnight in minutes
+        // Examples: 5min→1435 (23:55), 15min→1425 (23:45), 30min→1410 (23:30), 60min→1380 (23:00)
+        $targetMinutes = 1440 - $intervalMin;
+
+        // Find the reading closest to this target time
+        // Prefer readings AT or BEFORE the target over those after
+        $bestMatch = null;
+        $bestDiff = PHP_INT_MAX;
+
+        foreach ($rows as $row) {
+            $dt = \Carbon\Carbon::parse($row->Timestamp);
+            $rowMinutes = $dt->hour * 60 + $dt->minute;
+
+            // Skip readings that would round to the next day (e.g., 23:58 with 5-min → 00:00)
+            if ($rowMinutes > $targetMinutes + ($intervalMin / 2)) {
+                continue;
+            }
+
+            // Calculate absolute difference
+            $diff = abs($rowMinutes - $targetMinutes);
+
+            // If this is closer to target, or same distance but earlier, use it
+            if ($diff < $bestDiff || ($diff === $bestDiff && $rowMinutes <= $targetMinutes)) {
+                $bestDiff = $diff;
+                $bestMatch = $row;
+            }
+        }
+
+        return $bestMatch ?? $this->lastBucketOfDay($rows);
     }
 
     /**
@@ -342,7 +412,7 @@ class AcuvimController extends Controller
 
         return response()->json([
             'data' => $todayRows,
-            'previous_baseline' => $this->lastBucketOfDay($previousRows),
+            'previous_baseline' => $this->lastIntervalBaseline($previousRows, $intervalMin),
             'interval_min' => $intervalMin,
             'date' => $date,
             'previous_date' => $previousDate,

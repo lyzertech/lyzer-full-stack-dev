@@ -23,8 +23,8 @@ interface MetricRow {
 const METRIC_ROWS: MetricRow[] = [
   { key: 'Vlavg_V', label: 'Voltage Line Average' },
   { key: 'Iavg_A', label: 'Current Average' },
-  { key: 'Psum_kW', label: 'Active\nPower Total' },
-  { key: 'Qsum_kvar', label: 'Reactive\nPower Total' },
+  { key: 'Psum_kW', label: 'Active Power Total' },
+  { key: 'Qsum_kvar', label: 'Reactive Power Total' },
   { key: 'PF', label: 'Power Factor' },
 ]
 
@@ -172,6 +172,19 @@ const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => 
               const colors = ['primary', 'success', 'warning', 'info', 'danger']
               const color = colors[index % colors.length]
               
+              // Determine PF position (LAGGING/LEADING) based on reactive power
+              let pfPosition = ''
+              if (row.key === 'PF') {
+                const qValue = toNumber(latestRow?.Qsum_kvar)
+                if (qValue !== null) {
+                  if (qValue > 0) {
+                    pfPosition = 'LAGGING'
+                  } else if (qValue < 0) {
+                    pfPosition = 'LEADING'
+                  }
+                }
+              }
+              
               return (
                 <div key={row.key} className={`card border-${color} mb-2`}>
                   <div className="card-body p-3">
@@ -189,6 +202,11 @@ const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => 
                           <span className="text-muted small">
                             {unit}
                           </span>
+                          {pfPosition && (
+                            <span className={`badge bg-${pfPosition === 'LAGGING' ? 'warning' : 'info'} ms-2`}>
+                              {pfPosition}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

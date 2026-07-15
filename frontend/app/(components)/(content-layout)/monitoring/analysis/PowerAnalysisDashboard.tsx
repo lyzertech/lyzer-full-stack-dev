@@ -694,13 +694,29 @@ const PowerAnalysisDashboard: React.FC = () => {
                           { label: 'I avg', val: (n(latest?.Iavg_A) ?? 0).toFixed(2), unit: 'A', color: '#00e5ff' },
                           { label: 'I N',   val: (n(latest?.In) ?? 0).toFixed(2),     unit: 'A', color: '#8b5cf6' },
                           { label: 'V avg', val: (n(latest?.Vnavg_V) ?? 0).toFixed(1),unit: 'V', color: '#ef4444' },
-                          { label: 'PF avg',val: (n(latest?.PF) ?? 0).toFixed(3),     unit: '',  color: '#a3e635' },
                         ].map(({ label, val, unit, color }) => (
                           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                             <span style={{ color, fontSize: 12, fontWeight: 700 }}>{label}</span>
                             <span style={{ color: theme.text, fontSize: 13, fontWeight: 700 }}>{val} <span style={{ color: theme.textDim, fontSize: 12 }}>{unit}</span></span>
                           </div>
                         ))}
+                        {/* PF avg with LAGGING/LEADING indicator */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                          <span style={{ color: '#a3e635', fontSize: 12, fontWeight: 700 }}>PF avg</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ color: theme.text, fontSize: 13, fontWeight: 700 }}>{(n(latest?.PF) ?? 0).toFixed(3)}</span>
+                            {latest && n(latest?.Qsum_kvar) !== null && (
+                              <>
+                                {n(latest?.Qsum_kvar)! > 0 && (
+                                  <span className="badge bg-warning" style={{ fontSize: '0.5rem', padding: '1px 3px' }}>LAG</span>
+                                )}
+                                {n(latest?.Qsum_kvar)! < 0 && (
+                                  <span className="badge bg-info" style={{ fontSize: '0.5rem', padding: '1px 3px' }}>LEAD</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

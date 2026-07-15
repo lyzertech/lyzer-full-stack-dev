@@ -55,10 +55,7 @@ const DashboardWidgetCard: React.FC<DashboardWidgetCardProps> = ({
               <i className="bi bi-three-dots-vertical text-muted" />
             </Dropdown.Toggle>
             <Dropdown.Menu>
-              <Dropdown.Item>Edit widget</Dropdown.Item>
               <Dropdown.Item>Export data</Dropdown.Item>
-              <Dropdown.Divider />
-              <Dropdown.Item className="text-danger">Remove</Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>
         </div>

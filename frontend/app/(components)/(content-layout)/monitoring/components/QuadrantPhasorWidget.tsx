@@ -157,6 +157,8 @@ const QuadrantDiagram: React.FC<QuadrantDiagramProps> = ({ kW, kVAR, pf }) => {
           {pf !== null && (
             <span className="small">
               <strong className="text-muted">PF:</strong> {pf.toFixed(3)}
+              {kVAR > 0 && <span className="badge bg-warning ms-1" style={{ fontSize: '0.65rem' }}>LAGGING</span>}
+              {kVAR < 0 && <span className="badge bg-info ms-1" style={{ fontSize: '0.65rem' }}>LEADING</span>}
             </span>
           )}
         </div>

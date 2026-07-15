@@ -53,9 +53,24 @@ const formatTimestamp = (timestamp: string): string => {
 interface PhasorDiagramProps {
   voltagePhasors: PhasorData[]
   currentPhasors: PhasorData[]
+  angVa: number | null
+  angVb: number | null
+  angVc: number | null
+  angIa: number | null
+  angIb: number | null
+  angIc: number | null
 }
 
-const PhasorDiagram: React.FC<PhasorDiagramProps> = ({ voltagePhasors, currentPhasors }) => {
+const PhasorDiagram: React.FC<PhasorDiagramProps> = ({ 
+  voltagePhasors, 
+  currentPhasors,
+  angVa,
+  angVb,
+  angVc,
+  angIa,
+  angIb,
+  angIc
+}) => {
   const width = 300
   const height = 300
   const cx = width / 2
@@ -142,7 +157,59 @@ const PhasorDiagram: React.FC<PhasorDiagramProps> = ({ voltagePhasors, currentPh
   }
 
   return (
-    <div className="d-flex justify-content-center align-items-center" style={{ height: 320 }}>
+    <div className="d-flex flex-column align-items-center" style={{ minHeight: 320 }}>
+      {/* Small compact legend - organized by phase */}
+      <div className="d-flex gap-3 mb-2 justify-content-center" style={{ fontSize: '0.7rem' }}>
+        {/* Phase A */}
+        <div className="d-flex flex-column gap-1" style={{ minWidth: '70px' }}>
+          <div className="d-flex align-items-center justify-content-between">
+            <span className="text-muted">∠Va:</span>
+            <span className="fw-bold font-monospace text-end" style={{ color: '#dc3545', minWidth: '45px' }}>
+              {angVa !== null ? `${angVa.toFixed(1)}°` : '---'}
+            </span>
+          </div>
+          <div className="d-flex align-items-center justify-content-between">
+            <span className="text-muted">∠Ia:</span>
+            <span className="fw-bold font-monospace text-end" style={{ color: '#dc3545', minWidth: '45px' }}>
+              {angIa !== null ? `${angIa.toFixed(1)}°` : '---'}
+            </span>
+          </div>
+        </div>
+        
+        {/* Phase B */}
+        <div className="d-flex flex-column gap-1" style={{ minWidth: '70px' }}>
+          <div className="d-flex align-items-center justify-content-between">
+            <span className="text-muted">∠Vb:</span>
+            <span className="fw-bold font-monospace text-end" style={{ color: '#fd7e14', minWidth: '45px' }}>
+              {angVb !== null ? `${angVb.toFixed(1)}°` : '---'}
+            </span>
+          </div>
+          <div className="d-flex align-items-center justify-content-between">
+            <span className="text-muted">∠Ib:</span>
+            <span className="fw-bold font-monospace text-end" style={{ color: '#fd7e14', minWidth: '45px' }}>
+              {angIb !== null ? `${angIb.toFixed(1)}°` : '---'}
+            </span>
+          </div>
+        </div>
+        
+        {/* Phase C */}
+        <div className="d-flex flex-column gap-1" style={{ minWidth: '70px' }}>
+          <div className="d-flex align-items-center justify-content-between">
+            <span className="text-muted">∠Vc:</span>
+            <span className="fw-bold font-monospace text-end" style={{ color: '#0d6efd', minWidth: '45px' }}>
+              {angVc !== null ? `${angVc.toFixed(1)}°` : '---'}
+            </span>
+          </div>
+          <div className="d-flex align-items-center justify-content-between">
+            <span className="text-muted">∠Ic:</span>
+            <span className="fw-bold font-monospace text-end" style={{ color: '#0d6efd', minWidth: '45px' }}>
+              {angIc !== null ? `${angIc.toFixed(1)}°` : '---'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Phasor diagram SVG */}
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         {/* Background circle */}
         <circle
@@ -240,6 +307,14 @@ const PhasorDiagramWidget: React.FC<PhasorDiagramWidgetProps> = ({ device }) => 
   // Prepare phasor data
   const voltagePhasors: PhasorData[] = []
   const currentPhasors: PhasorData[] = []
+  
+  // Angle values for legend
+  let ang_va: number | null = null
+  let ang_vb: number | null = null
+  let ang_vc: number | null = null
+  let ang_ia: number | null = null
+  let ang_ib: number | null = null
+  let ang_ic: number | null = null
 
   if (latestRow) {
     const v1 = toNumber(latestRow.V1)
@@ -250,11 +325,12 @@ const PhasorDiagramWidget: React.FC<PhasorDiagramWidgetProps> = ({ device }) => 
     const i3 = toNumber(latestRow.I3)
     
     // Get phase angles from API
-    const ang_vb = toNumber(latestRow.Ang_Vb) ?? -120 // Default to -120° if not available
-    const ang_vc = toNumber(latestRow.Ang_Vc) ?? -240 // Default to -240° if not available
-    const ang_ia = toNumber(latestRow.Ang_Ia) ?? -30  // Default lag if not available
-    const ang_ib = toNumber(latestRow.Ang_Ib) ?? -150
-    const ang_ic = toNumber(latestRow.Ang_Ic) ?? -270
+    ang_va = 0 // Va is always reference at 0°
+    ang_vb = toNumber(latestRow.Ang_Vb) ?? -120 // Default to -120° if not available
+    ang_vc = toNumber(latestRow.Ang_Vc) ?? -240 // Default to -240° if not available
+    ang_ia = toNumber(latestRow.Ang_Ia) ?? -30  // Default lag if not available
+    ang_ib = toNumber(latestRow.Ang_Ib) ?? -150
+    ang_ic = toNumber(latestRow.Ang_Ic) ?? -270
 
     // Voltage phasors (Va is reference at 0°)
     if (v1 !== null) {
@@ -352,7 +428,16 @@ const PhasorDiagramWidget: React.FC<PhasorDiagramWidgetProps> = ({ device }) => 
             {device ? 'No phasor data available' : 'Select a device to view phasor diagram'}
           </div>
         ) : (
-          <PhasorDiagram voltagePhasors={voltagePhasors} currentPhasors={currentPhasors} />
+          <PhasorDiagram 
+            voltagePhasors={voltagePhasors} 
+            currentPhasors={currentPhasors}
+            angVa={ang_va}
+            angVb={ang_vb}
+            angVc={ang_vc}
+            angIa={ang_ia}
+            angIb={ang_ib}
+            angIc={ang_ic}
+          />
         )}
       </div>
     </DashboardWidgetCard>

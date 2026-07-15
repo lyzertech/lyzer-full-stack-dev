@@ -14,6 +14,7 @@ import {
   Col,
 } from 'react-bootstrap'
 import type { Brand } from './types'
+import { apiClient } from '@/lib/api-client'
 
 const emptyBrand = { name: '', logo: '', description: '', is_active: true }
 
@@ -31,8 +32,8 @@ export default function BrandsTab() {
     setLoading(true)
     try {
       const qs = search ? `?search=${encodeURIComponent(search)}` : ''
-      const res = await fetch(`/api/v1/labs/brands${qs}`)
-      if (res.ok) setBrands(await res.json())
+      const response = await apiClient.get(`/labs/brands${qs}`)
+      setBrands(response.data)
     } finally {
       setLoading(false)
     }
@@ -66,24 +67,12 @@ export default function BrandsTab() {
     setSaving(true)
     setError(null)
     try {
-      const url = editItem
-        ? `/api/v1/labs/brands/${editItem.id}`
-        : '/api/v1/labs/brands'
-      const method = editItem ? 'PUT' : 'POST'
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.message || 'Failed to save')
-        return
-      }
+      const url = editItem ? `/labs/brands/${editItem.id}` : '/labs/brands'
+      const response = editItem ? await apiClient.put(url, form) : await apiClient.post(url, form)
       setShowModal(false)
       load()
-    } catch {
-      setError('Network error')
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Network error')
     } finally {
       setSaving(false)
     }
@@ -91,7 +80,7 @@ export default function BrandsTab() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this brand?')) return
-    await fetch(`/api/v1/labs/brands/${id}`, { method: 'DELETE' })
+    await apiClient.delete(`/labs/brands/${id}`)
     load()
   }
 

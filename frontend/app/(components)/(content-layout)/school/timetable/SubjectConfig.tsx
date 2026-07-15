@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Button, Card, Form, Modal, Row, Col } from 'react-bootstrap'
 import SpkBadge from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-badge'
+import { apiClient } from '@/lib/api-client'
 
 interface SubjectConfigProps {
   subjects: string[]
@@ -36,9 +37,8 @@ const SubjectConfig: React.FC<SubjectConfigProps> = ({
     const fetchGrades = async () => {
       setGradesLoading(true)
       try {
-        const res = await fetch('/api/v1/school/grades', { cache: 'no-store' })
-        if (!res.ok) throw new Error('Failed to load grades')
-        const rows = await res.json()
+        const response = await apiClient.get('/school/grades')
+        const rows = response.data
         // Aggregate by grade id/level/name
         const map = new Map<
           number,
@@ -108,18 +108,8 @@ const SubjectConfig: React.FC<SubjectConfigProps> = ({
         is_active: !!form.is_active,
       }
 
-      const res = await fetch('/api/v1/subjects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error || 'Failed to create subject')
-      }
-
-      const created = await res.json()
+      const response = await apiClient.post('/subjects', payload)
+      const created = response.data
       // inform parent to update list
       onAddSubject(created.name)
       setShowModal(false)

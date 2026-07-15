@@ -5,6 +5,7 @@ import React, { use, useEffect, useState } from 'react'
 import { Card, Col, Row, Spinner, Form, Button } from 'react-bootstrap'
 import SpkBadge from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-badge'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { apiClient } from '@/lib/api-client'
 
 const VisitReportDetail = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params)
@@ -32,11 +33,8 @@ const VisitReportDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     let isMounted = true
     const fetchReport = async () => {
       try {
-        const res = await fetch('/api/v1/sales/visit-reports', {
-          cache: 'no-store',
-        })
-        if (!res.ok) throw new Error('Failed to fetch data from API')
-        const data = await res.json()
+        const res = await apiClient.get('/sales/visit-reports')
+        const data = res.data
         if (isMounted) {
           let found = null
           if (Array.isArray(data)) {
@@ -110,15 +108,7 @@ const VisitReportDetail = ({ params }: { params: Promise<{ id: string }> }) => {
       }
 
       const payload = { ...report, ...formData, status: currentStatus }
-      const res = await fetch(`/api/v1/sales/visit-reports/${decodedId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to update report')
-      }
+      await apiClient.put(`/sales/visit-reports/${decodedId}`, payload)
 
       // Update local state to reflect saved changes
       setReport({ ...payload })

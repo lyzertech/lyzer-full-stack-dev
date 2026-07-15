@@ -17,6 +17,7 @@ import {
   Pagination,
   Row,
 } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -174,13 +175,13 @@ const QuotationPage: React.FC = () => {
   const loadInitialData = async () => {
     try {
       const [qRes, cRes, pRes] = await Promise.all([
-        fetch('/api/v1/sales/quotations', { cache: 'no-store' }),
-        fetch('/api/v1/sales/customers', { cache: 'no-store' }),
-        fetch('/api/v1/sales/products', { cache: 'no-store' }),
+        apiClient.get('/sales/quotations'),
+        apiClient.get('/sales/customers'),
+        apiClient.get('/sales/products'),
       ])
-      if (qRes.ok) setQuotations(await qRes.json())
-      if (cRes.ok) setDbCustomers(await cRes.json())
-      if (pRes.ok) setDbProducts(await pRes.json())
+      if (Array.isArray(qRes.data)) setQuotations(qRes.data)
+      if (Array.isArray(cRes.data)) setDbCustomers(cRes.data)
+      if (Array.isArray(pRes.data)) setDbProducts(pRes.data)
     } catch (error) {
       console.error('Failed to load data:', error)
     }
@@ -404,86 +405,68 @@ const QuotationPage: React.FC = () => {
     if (!validate()) return
     setSubmitting(true)
 
-    await new Promise((r) => setTimeout(r, 400)) // simulate API
+    try {
+      const customer = dbCustomers.find((c) => String(c.id) === form.customer_id)!
+      const expiry = addDays(form.issued_date, Number(form.validity_days))
 
-    const customer = dbCustomers.find((c) => String(c.id) === form.customer_id)!
-    const now = new Date().toLocaleString('sv-SE')
-    const expiry = addDays(form.issued_date, Number(form.validity_days))
+      const payload = {
+        customer_id: customer.id,
+        customer_name: customer.name,
+        customer_company: customer.company,
+        customer_email: customer.email,
+        sales_owner: form.sales_owner || customer.sales || '',
+        status: form.status,
+        validity_days: form.validity_days,
+        issued_date: form.issued_date,
+        expiry_date: expiry,
+        subject: form.subject.trim(),
+        notes: form.notes.trim(),
+        terms: form.terms.trim(),
+        tax_pct: Number(form.tax_pct) || 11,
+        items: form.items,
+      }
 
-    if (editTarget) {
-      const res = await fetch(`/api/v1/sales/quotations/${editTarget.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: customer.id,
-          customer_name: customer.name,
-          customer_company: customer.company,
-          customer_email: customer.email,
-          sales_owner: form.sales_owner || customer.sales || '',
-          status: form.status,
-          validity_days: form.validity_days,
-          issued_date: form.issued_date,
-          expiry_date: expiry,
-          subject: form.subject.trim(),
-          notes: form.notes.trim(),
-          terms: form.terms.trim(),
-          tax_pct: Number(form.tax_pct) || 11,
-          items: form.items,
-        }),
-      })
-      if (!res.ok) alert('Error: ' + (await res.text()))
-    } else {
-      const res = await fetch('/api/v1/sales/quotations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: customer.id,
-          customer_name: customer.name,
-          customer_company: customer.company,
-          customer_email: customer.email,
-          sales_owner: form.sales_owner || customer.sales || '',
-          status: form.status,
-          validity_days: form.validity_days,
-          issued_date: form.issued_date,
-          expiry_date: expiry,
-          subject: form.subject.trim(),
-          notes: form.notes.trim(),
-          terms: form.terms.trim(),
-          tax_pct: Number(form.tax_pct) || 11,
-          items: form.items,
-        }),
-      })
-      if (!res.ok) alert('Error: ' + (await res.text()))
+      if (editTarget) {
+        await apiClient.put(`/sales/quotations/${editTarget.id}`, payload)
+      } else {
+        await apiClient.post('/sales/quotations', payload)
+      }
+
+      await loadInitialData()
+      setShowModal(false)
+    } catch (error: any) {
+      const responseData = error.response?.data
+      const message =
+        responseData?.message ||
+        responseData?.error ||
+        error.message ||
+        'Failed to save quotation.'
+      alert('Error: ' + message)
+    } finally {
+      setSubmitting(false)
     }
-
-    await loadInitialData()
-
-    setSubmitting(false)
-    setShowModal(false)
   }
 
   const handleStatusChange = async (
     qt: Quotation,
     newStatus: QuotationStatus,
   ) => {
-    await fetch(`/api/v1/sales/quotations/${qt.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    })
+    try {
+      await apiClient.put(`/sales/quotations/${qt.id}`, { status: newStatus })
+      await loadInitialData()
 
-    await loadInitialData()
-
-    if (selected?.id === qt.id) {
-      setSelected((s) => (s ? { ...s, status: newStatus } : s))
+      if (selected?.id === qt.id) {
+        setSelected((s) => (s ? { ...s, status: newStatus } : s))
+      }
+    } catch (error: any) {
+      console.error('Failed to update status:', error)
+      alert('Failed to update status: ' + (error.message || 'Unknown error'))
     }
   }
 
   const handleDuplicate = async (qt: Quotation) => {
-    await fetch('/api/v1/sales/quotations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      await apiClient.post('/sales/quotations', {
         customer_id: qt.customer_id,
         customer_name: qt.customer_name,
         customer_company: qt.customer_company,
@@ -498,10 +481,13 @@ const QuotationPage: React.FC = () => {
         terms: qt.terms,
         tax_pct: qt.tax_pct,
         items: qt.items.map((it) => ({ ...it, id: undefined })),
-      }),
-    })
+      })
 
-    await loadInitialData()
+      await loadInitialData()
+    } catch (error: any) {
+      console.error('Failed to duplicate quotation:', error)
+      alert('Failed to duplicate quotation: ' + (error.message || 'Unknown error'))
+    }
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────

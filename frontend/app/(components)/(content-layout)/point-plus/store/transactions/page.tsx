@@ -7,6 +7,7 @@ import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tab
 import SpkBadge from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-badge'
 import SpkButton from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-buttons'
 import { Card, Col, Row, Pagination, Form, Modal, Button } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type Transaction = {
   id: number
@@ -37,11 +38,8 @@ const TransactionsPage: React.FC = () => {
   const fetchTransactions = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/v1/point-plus/transactions?per_page=1000')
-      if (res.ok) {
-        const data = await res.json()
-        setTransactions(data.data || data)
-      }
+      const response = await apiClient.get('/point-plus/transactions?per_page=1000')
+      setTransactions(response.data.data || response.data)
     } catch (e) {
       console.error(e)
     } finally {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Card, Button, Form, Spinner, Badge, Row, Col } from 'react-bootstrap'
 import type { Category, SpecDefinition } from './types'
+import { apiClient } from '@/lib/api-client'
 
 interface MappedSpec extends SpecDefinition {
   is_required: boolean
@@ -24,11 +25,11 @@ export default function CategorySpecMapTab() {
     const init = async () => {
       setLoadingCats(true)
       const [cRes, sRes] = await Promise.all([
-        fetch('/api/v1/labs/categories?active_only=true'),
-        fetch('/api/v1/labs/spec-definitions'),
+        apiClient.get('/labs/categories?active_only=true'),
+        apiClient.get('/labs/spec-definitions'),
       ])
-      if (cRes.ok) setCategories(await cRes.json())
-      if (sRes.ok) setAllSpecs(await sRes.json())
+      setCategories(cRes.data)
+      setAllSpecs(sRes.data)
       setLoadingCats(false)
     }
     init()
@@ -38,15 +39,13 @@ export default function CategorySpecMapTab() {
   const loadMapped = useCallback(async (catId: string) => {
     if (!catId) { setMappedSpecs([]); return }
     setLoading(true)
-    const res = await fetch(`/api/v1/labs/categories/${catId}/specs`)
-    if (res.ok) {
-      const data: SpecDefinition[] = await res.json()
-      setMappedSpecs(data.map(s => ({
-        ...s,
-        is_required: s.pivot?.is_required ?? false,
-        map_sort_order: s.pivot?.sort_order ?? 0,
-      })))
-    }
+    const response = await apiClient.get(`/labs/categories/${catId}/specs`)
+    const data: SpecDefinition[] = response.data
+    setMappedSpecs(data.map(s => ({
+      ...s,
+      is_required: s.pivot?.is_required ?? false,
+      map_sort_order: s.pivot?.sort_order ?? 0,
+    })))
     setLoading(false)
   }, [])
 
@@ -95,13 +94,10 @@ export default function CategorySpecMapTab() {
         sort_order: i,
       })),
     }
-    const res = await fetch(`/api/v1/labs/categories/${selectedCatId}/specs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
+    await apiClient.post(`/labs/categories/${selectedCatId}/specs`, payload)
     setSaving(false)
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000) }
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
   }
 
   // Group unmapped specs for easy selection

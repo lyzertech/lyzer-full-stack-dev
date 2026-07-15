@@ -17,6 +17,7 @@ import {
   Button
 } from 'react-bootstrap'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import { apiClient } from '@/lib/api-client'
 
 type StockStatus = 'In Stock' | 'Low Stock' | 'Out of Stock'
 
@@ -153,9 +154,8 @@ const ProductsPage: React.FC = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/v1/point-plus/products', { cache: 'no-store' })
-      if (!res.ok) return
-      const data = await res.json()
+      const response = await apiClient.get('/point-plus/products')
+      const data = response.data
       if (data && Array.isArray(data.data)) {
         setProducts(data.data as Product[])
       } else if (Array.isArray(data)) {
@@ -233,28 +233,20 @@ const ProductsPage: React.FC = () => {
         status: form.status,
       }
 
-      const res = await fetch('/api/v1/point-plus/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        const message =
-          body?.message ||
-          body?.error ||
-          (body?.errors ? Object.values(body.errors).flat().join(' ') : null) ||
-          'Failed to create product.'
-        setFormError(message)
-        return
-      }
+      await apiClient.post('/point-plus/products', payload)
 
       setShowAddForm(false)
       setForm(initialForm)
       await loadProducts()
-    } catch (error) {
-      setFormError('Failed to create product.')
+    } catch (error: any) {
+      const responseData = error.response?.data
+      const message =
+        responseData?.message ||
+        responseData?.error ||
+        (responseData?.errors ? Object.values(responseData.errors).flat().join(' ') : null) ||
+        error.message ||
+        'Failed to create product.'
+      setFormError(message)
       console.error(error)
     } finally {
       setSubmitting(false)

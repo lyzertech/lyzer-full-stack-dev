@@ -6,6 +6,7 @@ import Seo from '@/shared/layouts-components/seo/seo'
 import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tables'
 import SpkBadge from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-badge'
 import { Card, Col, Row, Pagination, Form } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type Product = {
   id: number
@@ -35,14 +36,12 @@ const InventoryPage: React.FC = () => {
 
   const fetchMovements = async () => {
     try {
-      const res = await fetch('/api/v1/point-plus/stock-movements?per_page=1000')
-      if (res.ok) {
-        const data = await res.json()
-        if (data && Array.isArray(data.data)) {
-          setMovements(data.data)
-        } else if (Array.isArray(data)) {
-          setMovements(data)
-        }
+      const response = await apiClient.get('/point-plus/stock-movements?per_page=1000')
+      const data = response.data
+      if (data && Array.isArray(data.data)) {
+        setMovements(data.data)
+      } else if (Array.isArray(data)) {
+        setMovements(data)
       }
     } catch (error) {
       console.error(error)

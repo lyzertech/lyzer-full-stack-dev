@@ -6,6 +6,7 @@ import Seo from '@/shared/layouts-components/seo/seo'
 import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tables'
 import SpkButton from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-buttons'
 import { Card, Col, Row, Form, Offcanvas, Modal, Button } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 const currency = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
@@ -25,28 +26,19 @@ const PurchasesPage: React.FC = () => {
 
   const fetchPurchases = async () => {
     try {
-      const res = await fetch('/api/v1/point-plus/purchases?per_page=1000')
-      if (res.ok) {
-        const data = await res.json()
-        setPurchases(data.data || data)
-      }
+      const response = await apiClient.get('/point-plus/purchases?per_page=1000')
+      setPurchases(response.data.data || response.data)
     } catch (e) { console.error(e) }
   }
 
   const fetchDependencies = async () => {
     try {
       const [supRes, prodRes] = await Promise.all([
-        fetch('/api/v1/point-plus/suppliers?per_page=1000'),
-        fetch('/api/v1/point-plus/products?per_page=1000')
+        apiClient.get('/point-plus/suppliers?per_page=1000'),
+        apiClient.get('/point-plus/products?per_page=1000')
       ])
-      if (supRes.ok) {
-        const supData = await supRes.json()
-        setSuppliers(supData.data || supData)
-      }
-      if (prodRes.ok) {
-        const prodData = await prodRes.json()
-        setProducts(prodData.data || prodData)
-      }
+      setSuppliers(supRes.data.data || supRes.data)
+      setProducts(prodRes.data.data || prodRes.data)
     } catch (e) { console.error(e) }
   }
 
@@ -88,24 +80,16 @@ const PurchasesPage: React.FC = () => {
         }))
       }
 
-      const res = await fetch('/api/v1/point-plus/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        alert(err.error || 'Failed to record purchase')
-        return
-      }
+      await apiClient.post('/point-plus/purchases', payload)
 
       setShowAddForm(false)
       setSupplierId('')
       setInvoiceNumber('')
       setItems([])
       fetchPurchases()
-    } catch (e) {
+    } catch (e: any) {
+      const err = e.response?.data
+      alert(err?.error || e.message || 'Failed to record purchase')
       console.error(e)
     } finally {
       setSubmitting(false)

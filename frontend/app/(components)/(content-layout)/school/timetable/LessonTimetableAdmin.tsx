@@ -16,6 +16,7 @@ import {
   TimetableCell,
   TimetableState,
 } from './timetableTypes'
+import { apiClient } from '@/lib/api-client'
 
 const days: DayName[] = [
   'Monday',
@@ -43,9 +44,8 @@ const LessonTimetableAdmin: React.FC = () => {
   useEffect(() => {
     const fetchGrades = async () => {
       try {
-        const res = await fetch('/api/v1/school/grades', { cache: 'no-store' })
-        if (!res.ok) throw new Error('Failed to fetch grades')
-        const rows = await res.json()
+        const response = await apiClient.get('/school/grades')
+        const rows = response.data
         const map = new Map<
           number,
           { id: number; level: number; rooms: string[]; name: string }
@@ -124,17 +124,8 @@ const LessonTimetableAdmin: React.FC = () => {
       setTeachersLoading(true)
       setTeachersError(null)
       try {
-        const res = await fetch('/api/v1/school/teachers', {
-          method: 'GET',
-          cache: 'no-store',
-        })
-
-        if (!res.ok) {
-          throw new Error(`Request failed: ${res.status}`)
-        }
-
-        const json = await res.json()
-        setTeacherList(json)
+        const response = await apiClient.get('/school/teachers')
+        setTeacherList(response.data)
       } catch (err) {
         console.error(err)
         setTeachersError('Failed to load teachers from server.')
@@ -151,12 +142,8 @@ const LessonTimetableAdmin: React.FC = () => {
     setSubjectsLoading(true)
     setSubjectsError(null)
     try {
-      const res = await fetch('/api/v1/subjects', {
-        method: 'GET',
-        cache: 'no-store',
-      })
-      if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-      const json = await res.json()
+      const response = await apiClient.get('/subjects')
+      const json = response.data
       setSubjectRows(json)
       // apply filter based on currently selected grade label -> id
       const gid = gradeIdByLabel[selectedGrade]

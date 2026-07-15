@@ -17,6 +17,7 @@ import {
   Row,
   Modal,
 } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type CustomerStatus = 'Active' | 'Inactive' | 'Prospect' | 'Blacklisted'
 
@@ -379,11 +380,9 @@ const CustomerListPage: React.FC = () => {
 
     const loadCustomers = async () => {
       try {
-        const res = await fetch('/api/v1/sales/customers', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json()
-        if (isMounted && Array.isArray(data)) {
-          setCustomers(data as Customer[])
+        const response = await apiClient.get('/sales/customers')
+        if (isMounted && Array.isArray(response.data)) {
+          setCustomers(response.data as Customer[])
         }
       } catch (error) {
         console.error('Failed to load sales customers:', error)
@@ -527,34 +526,25 @@ const CustomerListPage: React.FC = () => {
         status: addForm.status,
       }
 
-      const res = await fetch('/api/v1/sales/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const response = await apiClient.post('/sales/customers', payload)
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        if (data?.details?.errors) {
-          const serverErrs: Partial<typeof BLANK_FORM> = {}
-          for (const [field, messages] of Object.entries(
-            data.details.errors as Record<string, string[]>,
-          )) {
-            ;(serverErrs as Record<string, string>)[field] = (messages as string[])[0]
-          }
-          setAddErrors(serverErrs)
-        } else {
-          alert(data?.error ?? 'Failed to save customer.')
-        }
-        return
-      }
-
-      setCustomers((prev) => [data as Customer, ...prev])
+      setCustomers((prev) => [response.data as Customer, ...prev])
       setShowAddModal(false)
-    } catch (err) {
-      console.error('handleAddCustomer error:', err)
-      alert('Network error — please try again.')
+    } catch (error: any) {
+      const responseData = error.response?.data
+      
+      if (responseData?.details?.errors) {
+        const serverErrs: Partial<typeof BLANK_FORM> = {}
+        for (const [field, messages] of Object.entries(
+          responseData.details.errors as Record<string, string[]>,
+        )) {
+          ;(serverErrs as Record<string, string>)[field] = (messages as string[])[0]
+        }
+        setAddErrors(serverErrs)
+      } else {
+        alert(responseData?.error || error.message || 'Failed to save customer.')
+      }
+      console.error('handleAddCustomer error:', error)
     } finally {
       setAddLoading(false)
     }

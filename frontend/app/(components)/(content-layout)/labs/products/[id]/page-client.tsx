@@ -9,6 +9,7 @@ import {
 } from 'react-bootstrap'
 import type { Product, SpecDefinition, DataType } from '../types'
 import { DATA_TYPE_ICONS, STATUS_COLORS } from '../types'
+import { apiClient } from '@/lib/api-client'
 
 // ─── Value display helper ─────────────────────────────────────────────────────
 function renderValue(sv: any): React.ReactNode {
@@ -133,10 +134,12 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    fetch(`/api/v1/labs/products/${id}`)
-      .then(async r => {
-        if (r.status === 404) { setNotFound(true); return }
-        if (r.ok) setProduct(await r.json())
+    apiClient.get(`/labs/products/${id}`)
+      .then(response => {
+        setProduct(response.data)
+      })
+      .catch(err => {
+        if (err.response?.status === 404) setNotFound(true)
       })
       .finally(() => setLoading(false))
   }, [id])

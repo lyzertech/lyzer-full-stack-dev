@@ -13,6 +13,7 @@ import {
   getDistinctFirmwareVersions,
   getDistinctHardwareVersions,
 } from '@/app/actions/labs/engineering-wiki.actions'
+import { apiClient } from '@/lib/api-client'
 import type { CreateEngineeringWikiInput } from '@/lib/labs/repositories/engineering-wiki.repository'
 
 const CreateEngineeringWikiPage: React.FC = () => {
@@ -134,16 +135,11 @@ const CreateEngineeringWikiPage: React.FC = () => {
       formData.append('file', file)
       formData.append('type', type)
 
-      const response = await fetch('/api/v1/upload', {
-        method: 'POST',
-        body: formData,
+      const response = await apiClient.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to upload file')
-      }
-
-      const data = await response.json()
+      const data = response.data
       return data.path
     } catch (error) {
       console.error('Error uploading file:', error)

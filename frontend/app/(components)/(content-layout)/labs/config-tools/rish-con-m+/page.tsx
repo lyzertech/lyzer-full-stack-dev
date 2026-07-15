@@ -6,6 +6,7 @@ import Seo from '@/shared/layouts-components/seo/seo'
 import { Button, Card, Col, Row, Form, Accordion, Modal, Alert, Spinner, Badge } from 'react-bootstrap'
 import { useRouter } from 'next/navigation'
 import { SYSTEM_TYPE_OPTIONS, PARAM_SELECT_OPTIONS, IO_MAP, MODBUS_CARDS, READING_LIST, SPECIAL_ADDRESSES } from './modbusConfig'
+import { apiClient } from '@/lib/api-client'
 
 interface ModbusData {
   [key: string]: {
@@ -52,11 +53,8 @@ export default function RishConMPlusPage() {
   }
 
   const fetchModbusData = async (address: number, count: number): Promise<ModbusData> => {
-    const response = await fetch(`/api/v1/modbus/read/${address}/${count}`)
-    if (!response.ok) {
-      throw new Error('Failed to fetch data')
-    }
-    return await response.json()
+    const response = await apiClient.get(`/modbus/read/${address}/${count}`)
+    return response.data
   }
 
   const writeAllChanges = async (groupAddress: number, groupData: ModbusData) => {
@@ -82,13 +80,12 @@ export default function RishConMPlusPage() {
     try {
       for (const change of changes) {
         try {
-          const response = await fetch('/api/v1/modbus/write', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address: change.address, value: parseFloat(change.value) })
+          const response = await apiClient.post('/modbus/write', { 
+            address: change.address, 
+            value: parseFloat(change.value) 
           })
 
-          const result = await response.json()
+          const result = response.data
 
           if (result.status === 'ok' || result.success) {
             successCount++

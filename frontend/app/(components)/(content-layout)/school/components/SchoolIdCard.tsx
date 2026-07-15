@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Card } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type Settings = {
   school_name?: string | null
@@ -24,11 +25,10 @@ export default function SchoolIdCard() {
   useEffect(() => {
     let mounted = true
     setLoading(true)
-    fetch('/api/v1/school/settings', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
+    apiClient.get('/school/settings')
+      .then((response) => {
         if (!mounted) return
-        setSettings(data || null)
+        setSettings(response.data || null)
       })
       .catch((err) => {
         console.error('Failed to load school settings', err)

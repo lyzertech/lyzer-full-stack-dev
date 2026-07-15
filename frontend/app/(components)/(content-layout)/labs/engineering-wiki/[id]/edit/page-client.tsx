@@ -16,6 +16,7 @@ import {
 } from '@/app/actions/labs/engineering-wiki.actions'
 import type { EngineeringWiki } from '@/lib/labs/repositories/engineering-wiki.repository'
 import type { UpdateEngineeringWikiInput } from '@/lib/labs/repositories/engineering-wiki.repository'
+import { apiClient } from '@/lib/api-client'
 
 const EditEngineeringWikiPage: React.FC = () => {
   const router = useRouter()
@@ -187,16 +188,11 @@ const EditEngineeringWikiPage: React.FC = () => {
       formData.append('file', file)
       formData.append('type', type)
 
-      const response = await fetch('/api/v1/upload', {
-        method: 'POST',
-        body: formData,
+      const response = await apiClient.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to upload file')
-      }
-
-      const data = await response.json()
+      const data = response.data
       return data.path
     } catch (error) {
       console.error('Error uploading file:', error)

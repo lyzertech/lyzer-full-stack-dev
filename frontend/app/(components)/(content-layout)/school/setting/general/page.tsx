@@ -4,6 +4,7 @@ import React, { Fragment, useEffect, useRef, useState } from 'react'
 import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Button, Card, Col, Row, Form } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type Settings = {
   id?: number
@@ -41,10 +42,8 @@ export default function SchoolSettingsGeneralPage() {
   async function loadSettings() {
     setLoading(true)
     try {
-      const r = await fetch('/api/v1/school/settings')
-      if (!r.ok) throw new Error('Failed to load')
-      const data = await r.json()
-      setSettings(data || {})
+      const response = await apiClient.get('/school/settings')
+      setSettings(response.data || {})
     } catch (err) {
       console.error(err)
       setError('Failed to load settings')
@@ -71,17 +70,9 @@ export default function SchoolSettingsGeneralPage() {
     setSuccess(null)
 
     try {
-      const res = await fetch('/api/v1/school/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings || {}),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error || 'Failed to save settings')
-      } else {
-        setSettings(data)
-        setSuccess('Settings saved')
+      const response = await apiClient.put('/school/settings', settings || {})
+      setSettings(response.data)
+      setSuccess('Settings saved')
         setEditing(false)
       }
     } catch (err) {

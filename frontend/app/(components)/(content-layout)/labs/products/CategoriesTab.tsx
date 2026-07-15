@@ -6,6 +6,7 @@ import {
   InputGroup, Badge, Spinner, Row, Col,
 } from 'react-bootstrap'
 import type { Category } from './types'
+import { apiClient } from '@/lib/api-client'
 
 const emptyForm = { name: '', description: '', icon: 'bi-cpu', sort_order: 0, is_active: true }
 
@@ -29,8 +30,8 @@ export default function CategoriesTab() {
     setLoading(true)
     try {
       const qs = search ? `?search=${encodeURIComponent(search)}` : ''
-      const res = await fetch(`/api/v1/labs/categories${qs}`)
-      if (res.ok) setItems(await res.json())
+      const response = await apiClient.get(`/labs/categories${qs}`)
+      setItems(response.data)
     } finally { setLoading(false) }
   }
 
@@ -48,21 +49,17 @@ export default function CategoriesTab() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setError(null)
     try {
-      const url = editItem ? `/api/v1/labs/categories/${editItem.id}` : '/api/v1/labs/categories'
-      const res = await fetch(url, {
-        method: editItem ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.message || 'Failed'); return }
+      const url = editItem ? `/labs/categories/${editItem.id}` : '/labs/categories'
+      const response = editItem ? await apiClient.put(url, form) : await apiClient.post(url, form)
       setShowModal(false); load()
-    } catch { setError('Network error') } finally { setSaving(false) }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Network error')
+    } finally { setSaving(false) }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this category?')) return
-    await fetch(`/api/v1/labs/categories/${id}`, { method: 'DELETE' })
+    await apiClient.delete(`/labs/categories/${id}`)
     load()
   }
 

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Button, Col, Form, Modal, Row } from 'react-bootstrap'
 import type { Grade } from './gradeTypes'
+import { apiClient } from '@/lib/api-client'
 
 interface Props {
   show: boolean
@@ -73,18 +74,8 @@ const GradeFormModal: React.FC<Props> = ({
         }))
       if (rooms.length) payload.rooms = rooms
 
-      const res = await fetch('/api/v1/school/grades', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error || 'Failed to save grade')
-      }
-
-      const created: Grade = await res.json()
-      onSaved(created)
+      const created = await apiClient.post('/school/grades', payload)
+      onSaved(created.data)
       onHide()
       setForm({
         name: '',

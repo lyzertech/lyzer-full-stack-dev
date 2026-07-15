@@ -5,6 +5,7 @@ import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Card, Col, Row } from 'react-bootstrap'
 import dynamic from 'next/dynamic'
+import { apiClient } from '@/lib/api-client'
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
 const currency = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
@@ -14,10 +15,9 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/v1/point-plus/dashboard/analytics')
-      .then(res => res.json())
-      .then(d => {
-        setData(d)
+    apiClient.get('/point-plus/dashboard/analytics')
+      .then(res => {
+        setData(res.data)
         setLoading(false)
       })
       .catch(e => {

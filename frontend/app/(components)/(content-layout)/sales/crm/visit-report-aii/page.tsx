@@ -12,6 +12,7 @@ import {
   type VisitReportStatus,
 } from '@/shared/data/sales/visitReportAiiSample'
 import Link from 'next/link'
+import { apiClient } from '@/lib/api-client'
 import React, {
   Fragment,
   useCallback,
@@ -250,21 +251,16 @@ const VisitReportAiiPage: React.FC = () => {
     const loadData = async () => {
       try {
         const [vrRes, custRes] = await Promise.all([
-          fetch('/api/v1/sales/visit-reports', { cache: 'no-store' }),
-          fetch('/api/v1/sales/customers', { cache: 'no-store' }),
+          apiClient.get('/sales/visit-reports'),
+          apiClient.get('/sales/customers'),
         ])
 
-        if (vrRes.ok) {
-          const data = await vrRes.json()
-          if (isMounted && Array.isArray(data)) {
-            setVisitRows(data as VisitReportAiiRow[])
-          }
-        } else {
-          console.error('Failed to load visit reports:', vrRes.status)
+        if (isMounted && Array.isArray(vrRes.data)) {
+          setVisitRows(vrRes.data as VisitReportAiiRow[])
         }
 
-        if (custRes.ok) {
-          const data = await custRes.json()
+        if (custRes.data) {
+          const data = custRes.data
           if (isMounted && Array.isArray(data)) {
             setCustomers(data as CustomerRecord[])
           }
@@ -464,34 +460,21 @@ const VisitReportAiiPage: React.FC = () => {
         purpose: form.purpose.trim() || null,
       }
 
-      const res = await fetch('/api/v1/sales/visit-reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const json = await res.json()
-
-      if (!res.ok) {
-        const detail =
-          typeof json?.message === 'string'
-            ? json.message
-            : typeof json?.error === 'string'
-              ? json.error
-              : 'Failed to create visit report.'
-        setSubmitError(detail)
-        return
-      }
+      const res = await apiClient.post('/sales/visit-reports', payload)
+      const json = res.data
 
       // Prepend to local state so it appears immediately at the top
       if (json?.data) {
         setVisitRows((prev) => [json.data as VisitReportAiiRow, ...prev])
+      } else if (json) {
+        setVisitRows((prev) => [json as VisitReportAiiRow, ...prev])
       }
 
       setShowModal(false)
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setSubmitError('Network error. Please try again.')
+      const detail = err.response?.data?.message || err.response?.data?.error || 'Network error. Please try again.'
+      setSubmitError(detail)
     } finally {
       setSubmitting(false)
     }

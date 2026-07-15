@@ -7,6 +7,7 @@ import {
 } from 'react-bootstrap'
 import type { SpecDefinition, DataType } from './types'
 import { DATA_TYPE_OPTIONS, DATA_TYPE_LABELS, DATA_TYPE_ICONS } from './types'
+import { apiClient } from '@/lib/api-client'
 
 const emptyForm = {
   spec_name: '', spec_key: '', data_type: 'text' as DataType, unit: '',
@@ -33,11 +34,11 @@ export default function SpecDefinitionsTab() {
       if (filterGroup) params.set('group_name', filterGroup)
       const qs = params.toString() ? `?${params}` : ''
       const [specsRes, groupsRes] = await Promise.all([
-        fetch(`/api/v1/labs/spec-definitions${qs}`),
-        fetch('/api/v1/labs/spec-definitions/groups'),
+        apiClient.get(`/labs/spec-definitions${qs}`),
+        apiClient.get('/labs/spec-definitions/groups'),
       ])
-      if (specsRes.ok) setItems(await specsRes.json())
-      if (groupsRes.ok) setGroups(await groupsRes.json())
+      setItems(specsRes.data)
+      setGroups(groupsRes.data)
     } finally { setLoading(false) }
   }
 
@@ -66,21 +67,17 @@ export default function SpecDefinitionsTab() {
           ? form.options.split(',').map(o => o.trim()).filter(Boolean)
           : null,
       }
-      const url = editItem ? `/api/v1/labs/spec-definitions/${editItem.id}` : '/api/v1/labs/spec-definitions'
-      const res = await fetch(url, {
-        method: editItem ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.message || 'Failed'); return }
+      const url = editItem ? `/labs/spec-definitions/${editItem.id}` : '/labs/spec-definitions'
+      const response = editItem ? await apiClient.put(url, payload) : await apiClient.post(url, payload)
       setShowModal(false); load()
-    } catch { setError('Network error') } finally { setSaving(false) }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Network error')
+    } finally { setSaving(false) }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this spec definition?')) return
-    await fetch(`/api/v1/labs/spec-definitions/${id}`, { method: 'DELETE' })
+    await apiClient.delete(`/labs/spec-definitions/${id}`)
     load()
   }
 

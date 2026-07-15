@@ -6,6 +6,7 @@ import Seo from '@/shared/layouts-components/seo/seo'
 import SpkTables from '@/shared/@spk-reusable-components/reusable-tables/spk-tables'
 import SpkButton from '@/shared/@spk-reusable-components/general-reusable/reusable-uielements/spk-buttons'
 import { Card, Col, Row, Pagination, Form, Offcanvas } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type Supplier = {
   id: number
@@ -40,13 +41,12 @@ const SuppliersPage: React.FC = () => {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await fetch('/api/v1/point-plus/suppliers?per_page=1000')
-      if (res.ok) {
-        const data = await res.json()
-        if (data && Array.isArray(data.data)) {
-          setSuppliers(data.data)
-        } else if (Array.isArray(data)) {
-          setSuppliers(data)
+      const response = await apiClient.get('/point-plus/suppliers?per_page=1000')
+      const data = response.data
+      if (data && Array.isArray(data.data)) {
+        setSuppliers(data.data)
+      } else if (Array.isArray(data)) {
+        setSuppliers(data)
         }
       }
     } catch (e) {
@@ -76,23 +76,14 @@ const SuppliersPage: React.FC = () => {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/v1/point-plus/suppliers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      })
-
-      if (!res.ok) {
-        const body = await res.json()
-        setError(body.message || body.error || 'Failed to save supplier')
-        return
-      }
+      await apiClient.post('/point-plus/suppliers', form)
 
       setShowForm(false)
       setForm(initialForm)
       fetchSuppliers()
-    } catch (e) {
-      setError('An error occurred')
+    } catch (e: any) {
+      const body = e.response?.data
+      setError(body?.message || body?.error || e.message || 'An error occurred')
     } finally {
       setSubmitting(false)
     }

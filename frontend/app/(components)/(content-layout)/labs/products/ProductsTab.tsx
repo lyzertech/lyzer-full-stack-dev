@@ -8,6 +8,7 @@ import {
 } from 'react-bootstrap'
 import type { Product, Brand, Category, SpecDefinition, DataType } from './types'
 import { DATA_TYPE_LABELS, STATUS_COLORS } from './types'
+import { apiClient } from '@/lib/api-client'
 
 // ─── Dynamic spec field renderer ─────────────────────────────────────────────
 function SpecField({ spec, value, onChange }: {
@@ -207,17 +208,16 @@ export default function ProductsTab() {
     params.set('sort_dir', 'asc')
     params.set('sort', 'model')
 
-    const res = await fetch(`/api/v1/labs/products?${params}`)
-    if (res.ok) {
-      const data = await res.json()
-      let fetchedProducts = data.data ?? data
-      
-      // Fallback frontend sort for current page
-      fetchedProducts = [...fetchedProducts].sort((a: any, b: any) => {
-        const modelA = a.model || ''
-        const modelB = b.model || ''
-        const cmp = modelA.localeCompare(modelB)
-        if (cmp !== 0) return cmp
+    const response = await apiClient.get(`/labs/products?${params}`)
+    const data = response.data
+    let fetchedProducts = data.data ?? data
+
+    // Fallback frontend sort for current page
+    fetchedProducts = [...fetchedProducts].sort((a: any, b: any) => {
+      const modelA = a.model || ''
+      const modelB = b.model || ''
+      const cmp = modelA.localeCompare(modelB)
+      if (cmp !== 0) return cmp
         const skuA = a.sku || ''
         const skuB = b.sku || ''
         return skuA.localeCompare(skuB)
@@ -231,9 +231,9 @@ export default function ProductsTab() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/v1/labs/brands?active_only=true').then(r => r.ok ? r.json() : []),
-      fetch('/api/v1/labs/categories?active_only=true').then(r => r.ok ? r.json() : []),
-    ]).then(([b, c]) => { setBrands(b); setCategories(c) })
+      apiClient.get('/labs/brands?active_only=true'),
+      apiClient.get('/labs/categories?active_only=true'),
+    ]).then(([b, c]) => { setBrands(b.data); setCategories(c.data) })
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -241,9 +241,9 @@ export default function ProductsTab() {
   // Load category specs when category changes in form
   useEffect(() => {
     if (!form.category_id) { setCatSpecs([]); return }
-    fetch(`/api/v1/labs/categories/${form.category_id}/specs`).then(async r => {
-      if (r.ok) setCatSpecs(await r.json())
-    })
+    apiClient.get(`/labs/categories/${form.category_id}/specs`).then(response => {
+      setCatSpecs(response.data)
+    }).catch(() => {})
   }, [form.category_id])
 
   const openCreate = () => {
@@ -261,17 +261,16 @@ export default function ProductsTab() {
       status: p.status, image: p.image || '', datasheet: p.datasheet || '',
     })
     // Load full product with spec values
-    const res = await fetch(`/api/v1/labs/products/${p.id}`)
-    if (res.ok) {
-      const full: Product = await res.json()
-      const vals: Record<number, any> = {}
-      full.spec_values?.forEach(sv => {
-        const def = sv.spec_definition
-        if (!def) return
-        vals[sv.spec_definition_id] = (() => {
-          switch (def.data_type) {
-            case 'number': return sv.value_number
-            case 'decimal': return sv.value_decimal
+    const response = await apiClient.get(`/labs/products/${p.id}`)
+    const full: Product = response.data
+    const vals: Record<number, any> = {}
+    full.spec_values?.forEach(sv => {
+      const def = sv.spec_definition
+      if (!def) return
+      vals[sv.spec_definition_id] = (() => {
+        switch (def.data_type) {
+          case 'number': return sv.value_number
+          case 'decimal': return sv.value_decimal
             case 'boolean': return sv.value_boolean
             case 'multi_select':
             case 'range': return sv.value_json
@@ -289,21 +288,17 @@ export default function ProductsTab() {
     try {
       const specs = catSpecs.map(s => ({ spec_definition_id: s.id, value: specValues[s.id] ?? null }))
       const payload = { ...form, specs }
-      const url = editItem ? `/api/v1/labs/products/${editItem.id}` : '/api/v1/labs/products'
-      const res = await fetch(url, {
-        method: editItem ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.message || 'Failed to save'); return }
+      const url = editItem ? `/labs/products/${editItem.id}` : '/labs/products'
+      const response = editItem ? await apiClient.put(url, payload) : await apiClient.post(url, payload)
       setShowModal(false); load()
-    } catch { setError('Network error') } finally { setSaving(false) }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Network error')
+    } finally { setSaving(false) }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this product?')) return
-    await fetch(`/api/v1/labs/products/${id}`, { method: 'DELETE' })
+    await apiClient.delete(`/labs/products/${id}`)
     load()
   }
 

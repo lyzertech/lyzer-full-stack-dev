@@ -5,6 +5,7 @@ import Pageheader from '@/shared/layouts-components/pageheader/pageheader'
 import Seo from '@/shared/layouts-components/seo/seo'
 import { Card, Col, Row, Button, Form, Modal, InputGroup } from 'react-bootstrap'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import { apiClient } from '@/lib/api-client'
 
 type Product = {
   id: number
@@ -68,13 +69,12 @@ const POSPage: React.FC = () => {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch('/api/v1/point-plus/products?per_page=1000') // Fetch all for local search in this phase
-      if (res.ok) {
-        const data = await res.json()
-        if (data && Array.isArray(data.data)) {
-          setProducts(data.data)
-        } else if (Array.isArray(data)) {
-          setProducts(data)
+      const response = await apiClient.get('/point-plus/products?per_page=1000') // Fetch all for local search in this phase
+      const data = response.data
+      if (data && Array.isArray(data.data)) {
+        setProducts(data.data)
+      } else if (Array.isArray(data)) {
+        setProducts(data)
         }
       }
     } catch (e) {
@@ -218,29 +218,19 @@ const POSPage: React.FC = () => {
         }))
       }
 
-      const res = await fetch('/api/v1/point-plus/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
+      const response = await apiClient.post('/point-plus/transactions', payload)
 
-      if (!res.ok) {
-        const error = await res.json()
-        alert(error.error || 'Checkout failed')
-        return
-      }
-
-      const transaction = await res.json()
-      setLastTransaction(transaction)
+      setLastTransaction(response.data)
       setCheckoutModal(false)
       setCart([])
       setTransactionDiscount(0)
       setAmountPaid(0)
       setReceiptModal(true)
       fetchProducts() // Refresh stock
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert('Checkout failed')
+      const err = error.response?.data
+      alert(err?.error || error.message || 'Checkout failed')
     }
   }
 

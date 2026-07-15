@@ -15,6 +15,7 @@ import {
   Pagination,
   Row,
 } from 'react-bootstrap'
+import { apiClient } from '@/lib/api-client'
 
 type ProductType = 'Goods' | 'Service' | 'Bundle'
 type StockStatus = 'In Stock' | 'Low Stock' | 'Out of Stock'
@@ -131,10 +132,10 @@ const ProductsPage: React.FC = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/v1/sales/products', { cache: 'no-store' })
-      if (!res.ok) return
-      const data = await res.json()
-      if (Array.isArray(data)) setProducts(data as Product[])
+      const response = await apiClient.get('/sales/products')
+      if (Array.isArray(response.data)) {
+        setProducts(response.data as Product[])
+      }
     } catch (error) {
       console.error('Failed to load products:', error)
     }
@@ -214,28 +215,20 @@ const ProductsPage: React.FC = () => {
         is_active: form.is_active,
       }
 
-      const res = await fetch('/api/v1/sales/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        const message =
-          body?.message ||
-          body?.error ||
-          (body?.errors ? Object.values(body.errors).flat().join(' ') : null) ||
-          'Failed to create product.'
-        setFormError(message)
-        return
-      }
+      await apiClient.post('/sales/products', payload)
 
       setShowAddForm(false)
       setForm(initialForm)
       await loadProducts()
-    } catch (error) {
-      setFormError('Failed to create product.')
+    } catch (error: any) {
+      const responseData = error.response?.data
+      const message =
+        responseData?.message ||
+        responseData?.error ||
+        (responseData?.errors ? Object.values(responseData.errors).flat().join(' ') : null) ||
+        error.message ||
+        'Failed to create product.'
+      setFormError(message)
       console.error(error)
     } finally {
       setSubmitting(false)

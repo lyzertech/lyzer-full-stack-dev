@@ -9,6 +9,7 @@ import CategoriesTab from './CategoriesTab'
 import SpecDefinitionsTab from './SpecDefinitionsTab'
 import CategorySpecMapTab from './CategorySpecMapTab'
 import ProductsTab from './ProductsTab'
+import { apiClient } from '@/lib/api-client'
 
 type TabKey = 'products' | 'brands' | 'categories' | 'specs' | 'mapping'
 
@@ -65,19 +66,18 @@ export default function LabsProductsPage() {
     async function fetchStats() {
       try {
         const fetchCount = async (url: string) => {
-          const res = await fetch(url)
-          if (!res.ok) return '—'
-          const data = await res.json()
+          const response = await apiClient.get(url)
+          const data = response.data
           return data.total !== undefined 
             ? data.total 
             : (Array.isArray(data) ? data.length : data.data?.length ?? '—')
         }
 
         const [products, brands, categories, specs] = await Promise.all([
-          fetchCount('/api/v1/labs/products?per_page=1'),
-          fetchCount('/api/v1/labs/brands?per_page=1'),
-          fetchCount('/api/v1/labs/categories?per_page=1'),
-          fetchCount('/api/v1/labs/spec-definitions?per_page=1')
+          fetchCount('/labs/products?per_page=1'),
+          fetchCount('/labs/brands?per_page=1'),
+          fetchCount('/labs/categories?per_page=1'),
+          fetchCount('/labs/spec-definitions?per_page=1')
         ])
 
         setStats({ products, brands, categories, specs })

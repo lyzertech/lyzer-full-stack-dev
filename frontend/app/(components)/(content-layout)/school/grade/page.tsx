@@ -9,6 +9,7 @@ import GradeFormModal from './components/GradeFormModal'
 import AssignTeachersModal from './components/AssignTeachersModal'
 import AdjustRoomCapacityModal from './components/AdjustRoomCapacityModal'
 import type { Grade, Room } from './components/gradeTypes'
+import { apiClient } from '@/lib/api-client'
 
 const GradesPage: React.FC = () => {
   const [grades, setGrades] = useState<Grade[]>([])
@@ -48,10 +49,8 @@ const GradesPage: React.FC = () => {
 
   async function fetchTeachers() {
     try {
-      const res = await fetch('/api/v1/school/teachers', { cache: 'no-store' })
-      if (!res.ok) throw new Error('Failed to load teachers')
-      const data = await res.json()
-      setTeachers(data)
+      const response = await apiClient.get('/school/teachers')
+      setTeachers(response.data)
     } catch (err) {
       console.error(err)
     }
@@ -61,9 +60,8 @@ const GradesPage: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/v1/school/grades', { cache: 'no-store' })
-      if (!res.ok) throw new Error('Failed to load grades')
-      const rows = await res.json()
+      const response = await apiClient.get('/school/grades')
+      const rows = response.data
 
       // rows may repeat grade per room (because of LEFT JOIN). Aggregate by id.
       const map = new Map<number, Grade>()
@@ -106,17 +104,12 @@ const GradesPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this grade? This will also remove its rooms.')) return
     try {
-      const res = await fetch('/api/v1/school/grades?id=' + id, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error || 'Delete failed')
-      }
+      await apiClient.delete(`/school/grades?id=${id}`)
       setGrades((prev) => prev.filter((g) => g.id !== id))
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert('Failed to delete')
+      const json = err.response?.data
+      alert(json?.error || err.message || 'Failed to delete')
     }
   }
 

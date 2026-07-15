@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Button, Col, Form, Modal, Row } from 'react-bootstrap'
 import type { Room } from './gradeTypes'
+import { apiClient } from '@/lib/api-client'
 
 interface Props {
   show: boolean
@@ -42,28 +43,19 @@ const AssignTeachersModal: React.FC<Props> = ({
     setAssignSubmitting(true)
     try {
       const promises = assignRooms.map((r) =>
-        fetch('/api/v1/school/grades', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            roomId: r.id,
-            teacherId: r.teacherId ? Number(r.teacherId) : null,
-          }),
+        apiClient.patch('/school/grades', {
+          roomId: r.id,
+          teacherId: r.teacherId ? Number(r.teacherId) : null,
         })
       )
-      const results = await Promise.all(promises)
-      for (const res of results) {
-        if (!res.ok) {
-          const json = await res.json().catch(() => null)
-          throw new Error(json?.error || 'Assign failed')
-        }
-      }
+      await Promise.all(promises)
 
       onHide()
       onSaved()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert('Failed to save assignments')
+      const json = err.response?.data
+      alert(json?.error || err.message || 'Failed to save assignments')
     } finally {
       setAssignSubmitting(false)
     }

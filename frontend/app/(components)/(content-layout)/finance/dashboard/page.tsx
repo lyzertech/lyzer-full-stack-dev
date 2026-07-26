@@ -6,9 +6,12 @@ import Seo from '@/shared/layouts-components/seo/seo'
 import { Card, Col, Row } from 'react-bootstrap'
 import {
   getDashboardSummary,
+  getBalanceHistory,
   type DashboardSummary,
+  type BalanceHistoryResponse,
 } from '@/app/actions/finance/dashboard.actions'
 import { useAuth } from '@/shared/auth/AuthContext'
+import AccountBalanceChart from './AccountBalanceChart'
 
 const formatCurrencyWithSpaces = (amount: unknown): string => {
   const num =
@@ -30,7 +33,10 @@ const formatCurrencyWithSpaces = (amount: unknown): string => {
 const FinanceDashboard: React.FC = () => {
   const { isAuthenticated, loading: authLoading } = useAuth()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [balanceHistory, setBalanceHistory] =
+    useState<BalanceHistoryResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [balanceHistoryLoading, setBalanceHistoryLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,15 +46,22 @@ const FinanceDashboard: React.FC = () => {
 
   async function loadDashboard() {
     setLoading(true)
+    setBalanceHistoryLoading(true)
     setError(null)
     try {
-      const data = await getDashboardSummary()
-      setSummary(data)
+      // Fetch both dashboard summary and balance history in parallel
+      const [summaryData, historyData] = await Promise.all([
+        getDashboardSummary(),
+        getBalanceHistory(30), // Last 30 days
+      ])
+      setSummary(summaryData)
+      setBalanceHistory(historyData)
     } catch (err: any) {
       console.error('Error loading dashboard:', err)
       setError(err.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
+      setBalanceHistoryLoading(false)
     }
   }
 
@@ -186,6 +199,14 @@ const FinanceDashboard: React.FC = () => {
               </div>
             </Card.Body>
           </Card>
+        </Col>
+
+        {/* Account Balance History Chart */}
+        <Col xl={12}>
+          <AccountBalanceChart
+            data={balanceHistory?.series || []}
+            loading={balanceHistoryLoading}
+          />
         </Col>
 
         {/* Account Balances */}

@@ -33,6 +33,24 @@ export interface PeriodSummary {
   net: number
 }
 
+export interface BalanceHistoryDataPoint {
+  date: string
+  balance: number
+}
+
+export interface AccountBalanceHistory {
+  account_id: number
+  account_name: string
+  bank_name: string
+  data: BalanceHistoryDataPoint[]
+}
+
+export interface BalanceHistoryResponse {
+  series: AccountBalanceHistory[]
+  start_date: string
+  end_date: string
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 export async function getDashboardSummary(
@@ -64,4 +82,21 @@ export async function getMonthlySummary(
 export async function getAccountSummary(accountId: number) {
   const { data } = await apiClient.get(`/finance/accounts/${accountId}`)
   return data
+}
+
+export async function getBalanceHistory(
+  days?: number,
+  accountIds?: number[]
+): Promise<BalanceHistoryResponse> {
+  const params = new URLSearchParams()
+  if (days) params.set('days', String(days))
+  if (accountIds && accountIds.length > 0) {
+    accountIds.forEach(id => params.append('account_ids[]', String(id)))
+  }
+
+  const qs = params.toString()
+  const { data } = await apiClient.get(
+    `${BASE}/balance-history${qs ? `?${qs}` : ''}`
+  )
+  return data as BalanceHistoryResponse
 }

@@ -121,4 +121,144 @@ class FinanceDashboardController extends Controller
             ], $accountBalances),
         ]);
     }
+
+    /**
+     * Get account balance history over time
+     */
+    public function balanceHistory(Request $request): JsonResponse
+    {
+        $days = $request->integer('days', 30);
+        $accountIds = $request->input('account_ids', []); // optional filter
+
+        $startDate = now()->subDays($days)->startOfDay();
+
+        // Build account filter
+        $accountFilter = '';
+        $accountParams = [];
+        if (!empty($accountIds) && is_array($accountIds)) {
+            $placeholders = implode(',', array_fill(0, count($accountIds), '?'));
+            $accountFilter = "AND t.account_id IN ({$placeholders})";
+            $accountParams = $accountIds;
+        }
+
+        // Get all transactions within the date range, ordered by date and time
+        $transactions = DB::select(
+            "SELECT 
+                t.id,
+                t.account_id,
+                t.transaction_date,
+                t.transaction_type,
+                t.amount,
+                t.balance_after,
+                t.created_at,
+                a.name AS account_name
+             FROM finance_transactions t
+             INNER JOIN finance_accounts a ON t.account_id = a.id
+             WHERE t.transaction_date >= ? {$accountFilter}
+             ORDER BY t.transaction_date ASC, t.created_at ASC",
+            array_merge([$startDate->format('Y-m-d')], $accountParams)
+        );
+
+        // Group by account and build time series
+        $accountSeries = [];
+        $accountInitialBalances = [];
+
+        // Get initial balances for each account (balance before the date range)
+        $accounts = DB::select(
+            "SELECT DISTINCT
+                a.id,
+                a.name,
+                a.current_balance,
+                b.name AS bank_name
+             FROM finance_accounts a
+             INNER JOIN finance_banks b ON a.bank_id = b.id
+             INNER JOIN finance_transactions t ON a.id = t.account_id
+             WHERE a.is_active = true {$accountFilter}",
+            $accountParams
+        );
+
+        foreach ($accounts as $account) {
+            $accountId = (int) $account->id;
+            $accountName = (string) $account->name;
+            $bankName = (string) $account->bank_name;
+            
+            // Get the last transaction before the start date to find initial balance
+            $lastTxBeforeStart = DB::selectOne(
+                "SELECT balance_after 
+                 FROM finance_transactions 
+                 WHERE account_id = ? AND transaction_date < ?
+                 ORDER BY transaction_date DESC, created_at DESC 
+                 LIMIT 1",
+                [$accountId, $startDate->format('Y-m-d')]
+            );
+
+            $initialBalance = $lastTxBeforeStart 
+                ? (float) $lastTxBeforeStart->balance_after 
+                : 0.0;
+
+            $accountInitialBalances[$accountId] = $initialBalance;
+            $accountSeries[$accountId] = [
+                'account_id' => $accountId,
+                'account_name' => $accountName,
+                'bank_name' => $bankName,
+                'data' => []
+            ];
+
+            // Add initial data point at the start date
+            $accountSeries[$accountId]['data'][] = [
+                'date' => $startDate->format('Y-m-d'),
+                'balance' => $initialBalance
+            ];
+        }
+
+        // Process transactions and build transaction map
+        $transactionsByAccount = [];
+        foreach ($transactions as $tx) {
+            $accountId = (int) $tx->account_id;
+            $date = $tx->transaction_date;
+            $balance = (float) $tx->balance_after;
+
+            if (!isset($transactionsByAccount[$accountId])) {
+                $transactionsByAccount[$accountId] = [];
+            }
+            
+            // Store the last balance for this date (in case of multiple transactions per day)
+            $transactionsByAccount[$accountId][$date] = $balance;
+        }
+
+        // Generate daily data points for all accounts
+        $endDate = now();
+        $currentDate = clone $startDate;
+        
+        foreach ($accountSeries as $accountId => &$series) {
+            $lastBalance = $accountInitialBalances[$accountId];
+            
+            // Clear the initial data array (we'll rebuild it with all dates)
+            $series['data'] = [];
+            
+            $dateIterator = clone $startDate;
+            while ($dateIterator <= $endDate) {
+                $dateStr = $dateIterator->format('Y-m-d');
+                
+                // If there's a transaction on this date, use that balance
+                if (isset($transactionsByAccount[$accountId][$dateStr])) {
+                    $lastBalance = $transactionsByAccount[$accountId][$dateStr];
+                }
+                
+                // Add data point for this date
+                $series['data'][] = [
+                    'date' => $dateStr,
+                    'balance' => $lastBalance
+                ];
+                
+                $dateIterator->addDay();
+            }
+        }
+
+        return response()->json([
+            'series' => array_values($accountSeries),
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => now()->format('Y-m-d')
+        ]);
+    }
 }

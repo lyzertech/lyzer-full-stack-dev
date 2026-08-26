@@ -73,8 +73,7 @@ export default function SchoolSettingsGeneralPage() {
       const response = await apiClient.put('/school/settings', settings || {})
       setSettings(response.data)
       setSuccess('Settings saved')
-        setEditing(false)
-      }
+      setEditing(false)
     } catch (err) {
       console.error(err)
       setError('Failed to save settings')

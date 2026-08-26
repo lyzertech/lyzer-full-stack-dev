@@ -75,7 +75,6 @@ const POSPage: React.FC = () => {
         setProducts(data.data)
       } else if (Array.isArray(data)) {
         setProducts(data)
-        }
       }
     } catch (e) {
       console.error(e)

@@ -47,7 +47,6 @@ const SuppliersPage: React.FC = () => {
         setSuppliers(data.data)
       } else if (Array.isArray(data)) {
         setSuppliers(data)
-        }
       }
     } catch (e) {
       console.error(e)

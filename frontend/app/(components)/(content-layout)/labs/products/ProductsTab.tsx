@@ -218,14 +218,13 @@ export default function ProductsTab() {
       const modelB = b.model || ''
       const cmp = modelA.localeCompare(modelB)
       if (cmp !== 0) return cmp
-        const skuA = a.sku || ''
-        const skuB = b.sku || ''
-        return skuA.localeCompare(skuB)
-      })
+      const skuA = a.sku || ''
+      const skuB = b.sku || ''
+      return skuA.localeCompare(skuB)
+    })
 
-      setProducts(fetchedProducts)
-      if (data.last_page) setTotalPages(data.last_page)
-    }
+    setProducts(fetchedProducts)
+    if (data.last_page) setTotalPages(data.last_page)
     setLoading(false)
   }, [page, search, filterBrand, filterCat, filterStatus])
 
@@ -271,15 +270,14 @@ export default function ProductsTab() {
         switch (def.data_type) {
           case 'number': return sv.value_number
           case 'decimal': return sv.value_decimal
-            case 'boolean': return sv.value_boolean
-            case 'multi_select':
-            case 'range': return sv.value_json
-            default: return sv.value_text
-          }
-        })()
-      })
-      setSpecValues(vals)
-    }
+          case 'boolean': return sv.value_boolean
+          case 'multi_select':
+          case 'range': return sv.value_json
+          default: return sv.value_text
+        }
+      })()
+    })
+    setSpecValues(vals)
     setError(null); setShowModal(true)
   }
 

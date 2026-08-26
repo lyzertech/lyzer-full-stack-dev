@@ -56,7 +56,7 @@ class VehicleDashboardController extends Controller
         // ── Low stock spareparts ──────────────────────────────────
         $lowStockCount = DB::selectOne("
             SELECT COUNT(*) as count FROM vehicle_spareparts
-            WHERE stock_quantity <= minimum_stock AND is_active = true AND deleted_at IS NULL
+            WHERE stock_quantity <= minimum_stock AND is_active = 1 AND deleted_at IS NULL
         ")->count;
 
         // ── Work order summary ────────────────────────────────────
@@ -101,13 +101,13 @@ class VehicleDashboardController extends Controller
         // ── Monthly cost trend (last 6 months) ────────────────────
         $monthlyCostTrend = DB::select("
             SELECT
-                TO_CHAR(cost_date, 'YYYY-MM') as month,
+                DATE_FORMAT(cost_date, '%Y-%m') as month,
                 SUM(CASE WHEN cost_type = 'Maintenance' THEN amount ELSE 0 END) as maintenance,
                 SUM(CASE WHEN cost_type = 'Fuel' THEN amount ELSE 0 END) as fuel,
                 SUM(amount) as total
             FROM vehicle_cost_records
             WHERE cost_date >= ?
-            GROUP BY TO_CHAR(cost_date, 'YYYY-MM')
+            GROUP BY DATE_FORMAT(cost_date, '%Y-%m')
             ORDER BY month ASC
         ", [Carbon::now()->subMonths(6)->startOfMonth()->toDateString()]);
 
@@ -115,7 +115,7 @@ class VehicleDashboardController extends Controller
         $lowStockItems = DB::select("
             SELECT id, sparepart_code, name, category, stock_quantity, minimum_stock, unit
             FROM vehicle_spareparts
-            WHERE stock_quantity <= minimum_stock AND is_active = true AND deleted_at IS NULL
+            WHERE stock_quantity <= minimum_stock AND is_active = 1 AND deleted_at IS NULL
             ORDER BY (stock_quantity - minimum_stock) ASC
             LIMIT 8
         ");

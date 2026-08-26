@@ -356,6 +356,15 @@ export const MENUITEMS_Monitoring: any = [
         title: 'Single Line',
       },
       {
+        path: '/monitoring/table-view',
+        type: 'link',
+        icon: Svgicons.Schoolicon,
+        active: false,
+        selected: false,
+        dirchange: false,
+        title: 'Table View',
+      },
+      {
         title: 'Installation',
         type: 'sub',
         icon: Svgicons.Advancedicon,

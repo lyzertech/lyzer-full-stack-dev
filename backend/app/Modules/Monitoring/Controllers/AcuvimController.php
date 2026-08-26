@@ -108,10 +108,10 @@ class AcuvimController extends Controller
         ?string $dateTo,
         int $intervalMin,
     ): array {
-        $bucketExpr = 'ROUND((EXTRACT(HOUR FROM "Timestamp") * 60 + EXTRACT(MINUTE FROM "Timestamp")) / ?) * ?';
+        $bucketExpr = 'ROUND((EXTRACT(HOUR FROM `Timestamp`) * 60 + EXTRACT(MINUTE FROM `Timestamp`)) / ?) * ?';
 
         $bucketQuery = DB::table('monitoring_acuvim')
-            ->selectRaw('MAX("Timestamp") as max_ts')
+            ->selectRaw('MAX(`Timestamp`) as max_ts')
             ->where('device_name', $deviceName);
 
         if ($deviceSerial) {
@@ -467,13 +467,13 @@ class AcuvimController extends Controller
             ->where('a.Timestamp', '>=', $this->dayStart($request->date_from))
             ->where('a.Timestamp', '<=', $this->dayEnd($request->date_to))
             ->selectRaw(
-                '"a"."Timestamp"::date as date,
+                'DATE(`a`.`Timestamp`) as date,
                 d.device_code,
-                MAX("a"."EP_TOTAL_kWh") as max_reading,
-                MIN("a"."EP_TOTAL_kWh") as min_reading,
+                MAX(`a`.`EP_TOTAL_kWh`) as max_reading,
+                MIN(`a`.`EP_TOTAL_kWh`) as min_reading,
                 COUNT(*) as sample_count'
             )
-            ->groupByRaw('"a"."Timestamp"::date, d.device_code')
+            ->groupByRaw('DATE(`a`.`Timestamp`), d.device_code')
             ->orderBy('date')
             ->get();
 

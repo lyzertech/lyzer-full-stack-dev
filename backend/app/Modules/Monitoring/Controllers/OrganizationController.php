@@ -29,7 +29,7 @@ class OrganizationController extends Controller
     {
         $data = Cache::remember(
             MonitoringCache::deviceTreeKey(),
-            MonitoringCache::TTL_SECONDS,
+            MonitoringCache::DEVICE_TREE_TTL_SECONDS,
             function () {
                 $organizations = Organization::with([
                     'facilities.devices' => fn ($q) => $q->orderBy('device_code'),
@@ -118,6 +118,8 @@ class OrganizationController extends Controller
         }
 
         $org->update($validated);
+        MonitoringCache::bump();
+
         return response()->json($org);
     }
 

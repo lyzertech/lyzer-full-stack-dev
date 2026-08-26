@@ -73,18 +73,19 @@ function sortByDeviceCode<T extends { device_code?: string | null }>(devices: T[
   )
 }
 
+function countDevicesInTree(nodes: DeviceNode[]): number {
+  let count = 0
+  for (const n of nodes) {
+    if (n.type === 'device') count++
+    if (n.children) count += countDevicesInTree(n.children)
+  }
+  return count
+}
+
 function buildTree(orgs: any[]): DeviceNode[] {
-  return orgs.map((org) => ({
-    id:    `org-${org.id}`,
-    label: org.name,
-    type:  'org' as const,
-    icon:  'ri-building-2-line',
-    children: (org.facilities ?? []).map((fac: any) => ({
-      id:    `fac-${fac.id}`,
-      label: fac.name,
-      type:  'facility' as const,
-      icon:  'ri-community-line',
-      children: sortByDeviceCode(fac.devices ?? []).map((dev: any): DeviceNode => ({
+  return orgs.map((org) => {
+    const orgChildren = (org.facilities ?? []).map((fac: any) => {
+      const facDevices = sortByDeviceCode(fac.devices ?? []).map((dev: any): DeviceNode => ({
         id:     `dev-${dev.id}`,
         label:  dev.name,
         type:   'device' as const,
@@ -103,9 +104,27 @@ function buildTree(orgs: any[]): DeviceNode[] {
           facility_name:   fac.name,
           org_name:        org.name,
         },
-      })),
-    })),
-  }))
+      }))
+
+      return {
+        id:    `fac-${fac.id}`,
+        label: fac.name,
+        type:  'facility' as const,
+        icon:  'ri-community-line',
+        children: facDevices,
+        meta: { deviceCount: facDevices.length },
+      }
+    })
+
+    return {
+      id:    `org-${org.id}`,
+      label: org.name,
+      type:  'org' as const,
+      icon:  'ri-building-2-line',
+      children: orgChildren,
+      meta: { deviceCount: countDevicesInTree(orgChildren) },
+    }
+  })
 }
 
 function collectDevices(nodes: DeviceNode[]): DeviceNode[] {
@@ -218,7 +237,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             background: t.badgeBg, borderRadius: 8, padding: '4px 8px',
             fontSize: 12, color: t.textDim, flexShrink: 0,
           }}>
-            {collectDevices(node.children!).length}
+            {node.meta?.deviceCount ?? collectDevices(node.children!).length}
           </span>
         )}
 
@@ -267,7 +286,7 @@ const DeviceTree: React.FC<DeviceTreeProps> = ({ selectedId, onSelect }) => {
       if (!selectedId) {
         const allDevices = collectDevices(built)
         const urlDeviceName = searchParams.get('device_name')
-        const target = urlDeviceName 
+        const target = urlDeviceName
           ? allDevices.find(d => d.meta?.device_name === urlDeviceName) || allDevices[0]
           : allDevices[0]
         if (target) onSelect(target)
@@ -281,22 +300,25 @@ const DeviceTree: React.FC<DeviceTreeProps> = ({ selectedId, onSelect }) => {
 
   useEffect(() => { fetchTree() }, [fetchTree])
 
-  const allDevices = collectDevices(tree)
-  const counts = {
+  const allDevices = React.useMemo(() => collectDevices(tree), [tree])
+
+  const counts = React.useMemo(() => ({
     online:  allDevices.filter((d) => ['online','Online'].includes(d.status ?? '')).length,
     offline: allDevices.filter((d) => ['offline','Offline'].includes(d.status ?? '')).length,
     warning: allDevices.filter((d) => ['warning','Warning'].includes(d.status ?? '')).length,
     idle:    allDevices.filter((d) => ['idle','Inactive'].includes(d.status ?? '')).length,
-  }
+  }), [allDevices])
 
   // Filtered flat list when searching
-  const filteredDevices = search.trim()
-    ? allDevices.filter((d) =>
-        d.label.toLowerCase().includes(search.toLowerCase()) ||
-        d.meta?.ip?.toLowerCase().includes(search.toLowerCase()) ||
-        d.meta?.model?.toLowerCase().includes(search.toLowerCase())
-      )
-    : null
+  const filteredDevices = React.useMemo(() => {
+    if (!search.trim()) return null
+    const lowerSearch = search.toLowerCase()
+    return allDevices.filter((d) =>
+      d.label.toLowerCase().includes(lowerSearch) ||
+      d.meta?.ip?.toLowerCase().includes(lowerSearch) ||
+      d.meta?.model?.toLowerCase().includes(lowerSearch)
+    )
+  }, [allDevices, search])
 
   return (
     <div style={{

@@ -74,14 +74,14 @@ class FacilityController extends Controller
         $names = $deviceRows->pluck('name')->filter()->unique()->values()->all();
 
         $acuvimBySerial = DB::table('monitoring_acuvim')
-            ->selectRaw('device_serial, MAX("Timestamp") as max_ts, MAX(created_at) as max_created')
+            ->selectRaw('device_serial, MAX(`Timestamp`) as max_ts, MAX(created_at) as max_created')
             ->whereNotNull('device_serial')
             ->when($serials !== [], fn ($q) => $q->whereIn('device_serial', $serials))
             ->when($serials === [], fn ($q) => $q->whereRaw('1 = 0'))
             ->groupBy('device_serial');
 
         $acuvimByName = DB::table('monitoring_acuvim')
-            ->selectRaw('device_name, MAX("Timestamp") as max_ts, MAX(created_at) as max_created')
+            ->selectRaw('device_name, MAX(`Timestamp`) as max_ts, MAX(created_at) as max_created')
             ->whereNotNull('device_name')
             ->when($names !== [], fn ($q) => $q->whereIn('device_name', $names))
             ->when($names === [], fn ($q) => $q->whereRaw('1 = 0'))

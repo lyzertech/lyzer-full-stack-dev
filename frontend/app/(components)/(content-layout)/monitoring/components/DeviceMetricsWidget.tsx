@@ -1,8 +1,7 @@
 ﻿'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Spinner } from 'react-bootstrap'
-import { apiClient } from '@/lib/api-client'
 import type { DeviceNode } from '../utils/deviceTree'
 import DashboardWidgetCard from './DashboardWidgetCard'
 
@@ -39,70 +38,20 @@ const formatReading = (value: number | null): string => {
   return value.toFixed(2)
 }
 
-const formatTimestamp = (timestamp: string): string => {
-  const iso = timestamp.includes('T') ? timestamp : timestamp.replace(' ', 'T')
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return timestamp
-
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const offsetMin = -date.getTimezoneOffset()
-  const sign = offsetMin >= 0 ? '+' : '-'
-  const abs = Math.abs(offsetMin)
-  const offsetHours = pad(Math.floor(abs / 60))
-  const offsetMinutes = pad(abs % 60)
-
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${sign}${offsetHours}:${offsetMinutes}`
-}
-
 interface DeviceMetricsWidgetProps {
   device?: DeviceNode | null
+  latestRow?: AcuvimLatestRow | null
+  loading?: boolean
+  error?: string | null
 }
 
-const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [latestRow, setLatestRow] = useState<AcuvimLatestRow | null>(null)
+const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({
+  device,
+  latestRow,
+  loading = false,
+  error = null
+}) => {
   const [fontLoaded, setFontLoaded] = useState(false)
-
-  const fetchLatest = useCallback(async () => {
-    const deviceName = device?.meta?.device_name ?? device?.label
-    if (!deviceName) {
-      setLatestRow(null)
-      setError(null)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({
-        device_name: deviceName,
-        per_page: '1',
-        page: '1',
-      })
-      if (device.meta?.device_code) {
-        params.set('device_serial', device.meta.device_code)
-      }
-
-      const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
-      const row = (res.data?.data ?? [])[0] as AcuvimLatestRow | undefined
-      if (!row) {
-        setLatestRow(null)
-        setError('No readings available')
-        return
-      }
-      setLatestRow(row)
-    } catch (err: any) {
-      setLatestRow(null)
-      setError(err.response?.data?.message || err.message || 'Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }, [device])
-
-  useEffect(() => {
-    fetchLatest()
-  }, [fetchLatest])
 
   useEffect(() => {
     // Check if DSEG font is available
@@ -127,12 +76,7 @@ const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => 
     checkFont()
   }, [])
 
-  const deviceLabel = device?.label ?? 'No device selected'
-  const subtitle = latestRow?.Timestamp
-    ? `${deviceLabel} | ${formatTimestamp(String(latestRow.Timestamp))}`
-    : device
-      ? `${deviceLabel} | No data available`
-      : 'Select a device to view metrics'
+  const subtitle = device ? undefined : 'Select a device to view metrics'
 
   return (
     <DashboardWidgetCard
@@ -149,15 +93,6 @@ const DeviceMetricsWidget: React.FC<DeviceMetricsWidgetProps> = ({ device }) => 
         ) : error ? (
           <div className="text-center py-4">
             <div className="text-danger mb-2 small">{error}</div>
-            {device && (
-              <button
-                type="button"
-                className="btn btn-outline-primary btn-sm"
-                onClick={fetchLatest}
-              >
-                Retry
-              </button>
-            )}
           </div>
         ) : (
           <div>

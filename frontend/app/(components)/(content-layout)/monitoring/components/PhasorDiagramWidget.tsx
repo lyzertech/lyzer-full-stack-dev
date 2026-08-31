@@ -1,8 +1,7 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React from 'react'
 import { Spinner } from 'react-bootstrap'
-import { apiClient } from '@/lib/api-client'
 import type { DeviceNode } from '../utils/deviceTree'
 import DashboardWidgetCard from './DashboardWidgetCard'
 
@@ -33,21 +32,6 @@ const toNumber = (value: unknown): number | null => {
   if (value === null || value === undefined || value === '') return null
   const num = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(num) ? num : null
-}
-
-const formatTimestamp = (timestamp: string): string => {
-  const iso = timestamp.includes('T') ? timestamp : timestamp.replace(' ', 'T')
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return timestamp
-
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const offsetMin = -date.getTimezoneOffset()
-  const sign = offsetMin >= 0 ? '+' : '-'
-  const abs = Math.abs(offsetMin)
-  const offsetHours = pad(Math.floor(abs / 60))
-  const offsetMinutes = pad(abs % 60)
-
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${sign}${offsetHours}:${offsetMinutes}`
 }
 
 interface PhasorDiagramProps {
@@ -257,52 +241,17 @@ const PhasorDiagram: React.FC<PhasorDiagramProps> = ({
 
 interface PhasorDiagramWidgetProps {
   device?: DeviceNode | null
+  latestRow?: AcuvimLatestRow | null
+  loading?: boolean
+  error?: string | null
 }
 
-const PhasorDiagramWidget: React.FC<PhasorDiagramWidgetProps> = ({ device }) => {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [latestRow, setLatestRow] = useState<AcuvimLatestRow | null>(null)
-
-  const fetchLatest = useCallback(async () => {
-    const deviceName = device?.meta?.device_name ?? device?.label
-    if (!deviceName) {
-      setLatestRow(null)
-      setError(null)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({
-        device_name: deviceName,
-        per_page: '1',
-        page: '1',
-      })
-      if (device.meta?.device_code) {
-        params.set('device_serial', device.meta.device_code)
-      }
-
-      const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
-      const row = (res.data?.data ?? [])[0] as AcuvimLatestRow | undefined
-      if (!row) {
-        setLatestRow(null)
-        setError('No readings available')
-        return
-      }
-      setLatestRow(row)
-    } catch (err: any) {
-      setLatestRow(null)
-      setError(err.response?.data?.message || err.message || 'Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }, [device])
-
-  useEffect(() => {
-    fetchLatest()
-  }, [fetchLatest])
+const PhasorDiagramWidget: React.FC<PhasorDiagramWidgetProps> = ({
+  device,
+  latestRow,
+  loading = false,
+  error = null
+}) => {
 
   // Prepare phasor data
   const voltagePhasors: PhasorData[] = []
@@ -391,12 +340,7 @@ const PhasorDiagramWidget: React.FC<PhasorDiagramWidgetProps> = ({ device }) => 
     }
   }
 
-  const deviceLabel = device?.label ?? 'No device selected'
-  const subtitle = latestRow?.Timestamp
-    ? `${deviceLabel} | ${formatTimestamp(String(latestRow.Timestamp))}`
-    : device
-      ? `${deviceLabel} | No data available`
-      : 'Select a device to view phasor diagram'
+  const subtitle = device ? undefined : 'Select a device to view phasor diagram'
 
   return (
     <DashboardWidgetCard
@@ -413,15 +357,6 @@ const PhasorDiagramWidget: React.FC<PhasorDiagramWidgetProps> = ({ device }) => 
         ) : error ? (
           <div className="text-center py-4">
             <div className="text-danger mb-2 small">{error}</div>
-            {device && (
-              <button
-                type="button"
-                className="btn btn-outline-primary btn-sm"
-                onClick={fetchLatest}
-              >
-                Retry
-              </button>
-            )}
           </div>
         ) : voltagePhasors.length === 0 && currentPhasors.length === 0 ? (
           <div className="text-center py-5 text-muted">

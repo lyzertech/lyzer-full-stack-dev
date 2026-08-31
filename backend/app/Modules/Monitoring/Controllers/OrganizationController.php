@@ -10,6 +10,7 @@ use App\Modules\Monitoring\Services\DeviceStatusResolver;
 use App\Modules\Monitoring\Services\MonitoringCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class OrganizationController extends Controller
@@ -40,18 +41,36 @@ class OrganizationController extends Controller
 
                 $this->statusResolver->applyToCollection($devices);
 
-                // Attach latest metrics from Acuvim to each device
+                // Fetch latest metrics efficiently using subquery
+                $deviceSerials = $devices->pluck('device_code')->unique()->filter()->values()->toArray();
+
+                $latestMetrics = [];
+                if (!empty($deviceSerials)) {
+                    // Use subquery to get only the latest record per device_serial
+                    $latestMetrics = DB::table('monitoring_acuvim as a')
+                        ->joinSub(
+                            DB::table('monitoring_acuvim')
+                                ->selectRaw('device_serial, MAX(Timestamp) as max_timestamp')
+                                ->whereIn('device_serial', $deviceSerials)
+                                ->groupBy('device_serial'),
+                            'latest',
+                            function ($join) {
+                                $join->on('a.device_serial', '=', 'latest.device_serial')
+                                     ->on('a.Timestamp', '=', 'latest.max_timestamp');
+                            }
+                        )
+                        ->select(['a.device_serial', 'a.Vlavg_V', 'a.Iavg_A', 'a.Psum_kW', 'a.Freq_Hz', 'a.PF', 'a.Timestamp'])
+                        ->get()
+                        ->keyBy('device_serial')
+                        ->toArray();
+                }
+
+                // Attach metrics to devices
                 foreach ($organizations as $org) {
                     foreach ($org->facilities as $facility) {
                         foreach ($facility->devices as $device) {
-                            // Fetch latest metrics for this device
-                            $metrics = Acuvim::where('device_name', $device->name)
-                                ->where('device_serial', $device->device_code)
-                                ->orderBy('Timestamp', 'desc')
-                                ->select(['Vlavg_V', 'Iavg_A', 'Psum_kW', 'Freq_Hz', 'PF', 'Timestamp'])
-                                ->first();
-                            
-                            // Attach formatted metrics to device
+                            $metrics = $latestMetrics[$device->device_code] ?? null;
+
                             $device->latest_metrics = $metrics ? [
                                 'voltage' => $metrics->Vlavg_V,
                                 'current' => $metrics->Iavg_A,

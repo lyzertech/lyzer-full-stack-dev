@@ -1,8 +1,7 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React from 'react'
 import { Spinner } from 'react-bootstrap'
-import { apiClient } from '@/lib/api-client'
 import type { DeviceNode } from '../utils/deviceTree'
 
 interface AcuvimEnergyRow {
@@ -56,52 +55,17 @@ const formatTimestamp = (timestamp: string): string => {
 
 interface EnergyMetricsWidgetProps {
   device?: DeviceNode | null
+  latestRow?: AcuvimEnergyRow | null
+  loading?: boolean
+  error?: string | null
 }
 
-const EnergyMetricsWidget: React.FC<EnergyMetricsWidgetProps> = ({ device }) => {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [latestRow, setLatestRow] = useState<AcuvimEnergyRow | null>(null)
-
-  const fetchLatest = useCallback(async () => {
-    const deviceName = device?.meta?.device_name ?? device?.label
-    if (!deviceName) {
-      setLatestRow(null)
-      setError(null)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({
-        device_name: deviceName,
-        per_page: '1',
-        page: '1',
-      })
-      if (device.meta?.device_code) {
-        params.set('device_serial', device.meta.device_code)
-      }
-
-      const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
-      const row = (res.data?.data ?? [])[0] as AcuvimEnergyRow | undefined
-      if (!row) {
-        setLatestRow(null)
-        setError('No energy data available')
-        return
-      }
-      setLatestRow(row)
-    } catch (err: any) {
-      setLatestRow(null)
-      setError(err.response?.data?.message || err.message || 'Failed to load energy data')
-    } finally {
-      setLoading(false)
-    }
-  }, [device])
-
-  useEffect(() => {
-    fetchLatest()
-  }, [fetchLatest])
+const EnergyMetricsWidget: React.FC<EnergyMetricsWidgetProps> = ({
+  device,
+  latestRow,
+  loading = false,
+  error = null
+}) => {
 
   const deviceLabel = device?.label ?? 'No device selected'
   const subtitle = latestRow?.Timestamp
@@ -120,15 +84,6 @@ const EnergyMetricsWidget: React.FC<EnergyMetricsWidgetProps> = ({ device }) => 
       ) : error ? (
         <div className="text-center py-2">
           <div className="text-danger mb-2 small">{error}</div>
-          {device && (
-            <button
-              type="button"
-              className="btn btn-outline-primary btn-sm"
-              onClick={fetchLatest}
-            >
-              Retry
-            </button>
-          )}
         </div>
       ) : (
         <div className="row g-2">

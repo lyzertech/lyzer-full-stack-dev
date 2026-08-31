@@ -1,9 +1,8 @@
 ﻿'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { Spinner } from 'react-bootstrap'
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts'
-import { apiClient } from '@/lib/api-client'
 import type { DeviceNode } from '../utils/deviceTree'
 import DashboardWidgetCard from './DashboardWidgetCard'
 
@@ -48,21 +47,6 @@ const toNumber = (value: unknown): number | null => {
   return Number.isFinite(num) ? num : null
 }
 
-const formatTimestamp = (timestamp: string): string => {
-  const iso = timestamp.includes('T') ? timestamp : timestamp.replace(' ', 'T')
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return timestamp
-
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const offsetMin = -date.getTimezoneOffset()
-  const sign = offsetMin >= 0 ? '+' : '-'
-  const abs = Math.abs(offsetMin)
-  const offsetHours = pad(Math.floor(abs / 60))
-  const offsetMinutes = pad(abs % 60)
-
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${sign}${offsetHours}:${offsetMinutes}`
-}
-
 const computeGaugeMax = (values: number[]): number => {
   const peak = values.length > 0 ? Math.max(...values) : 0
   if (peak <= 0) return 20
@@ -81,56 +65,17 @@ interface AcuvimLatestRow {
 
 interface CurrentGaugeWidgetProps {
   device?: DeviceNode | null
+  latestRow?: AcuvimLatestRow | null
+  loading?: boolean
+  error?: string | null
 }
 
-const CurrentGaugeWidget: React.FC<CurrentGaugeWidgetProps> = ({ device }) => {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [latestRow, setLatestRow] = useState<AcuvimLatestRow | null>(null)
-
-  const fetchLatestCurrents = useCallback(async () => {
-    const deviceName = device?.meta?.device_name ?? device?.label
-    if (!deviceName) {
-      setLatestRow(null)
-      setError(null)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({
-        device_name: deviceName,
-        per_page: '1',
-        page: '1',
-      })
-      if (device.meta?.device_code) {
-        params.set('device_serial', device.meta.device_code)
-      }
-
-      const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
-      const row = (res.data?.data ?? [])[0] as AcuvimLatestRow | undefined
-      if (!row) {
-        setLatestRow(null)
-        setError('No current readings available for this device')
-        return
-      }
-      setLatestRow(row)
-    } catch (err: any) {
-      setLatestRow(null)
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to load current data',
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [device])
-
-  useEffect(() => {
-    fetchLatestCurrents()
-  }, [fetchLatestCurrents])
+const CurrentGaugeWidget: React.FC<CurrentGaugeWidgetProps> = ({
+  device,
+  latestRow,
+  loading = false,
+  error = null
+}) => {
 
   const currents = useMemo(
     () => [
@@ -146,12 +91,7 @@ const CurrentGaugeWidget: React.FC<CurrentGaugeWidgetProps> = ({ device }) => {
     [currents],
   )
 
-  const deviceLabel = device?.label ?? 'No device selected'
-  const subtitle = latestRow?.Timestamp
-    ? `${deviceLabel} | ${formatTimestamp(String(latestRow.Timestamp))}`
-    : device
-      ? `${deviceLabel} | No data available`
-      : 'Select a device to view measurements'
+  const subtitle = device ? undefined : 'Select a device to view measurements'
 
   const tickCount = 11
   const cx = 150
@@ -172,15 +112,6 @@ const CurrentGaugeWidget: React.FC<CurrentGaugeWidgetProps> = ({ device }) => {
         ) : error ? (
           <div className="text-center py-4">
             <div className="text-danger mb-2 small">{error}</div>
-            {device && (
-              <button
-                type="button"
-                className="btn btn-outline-primary btn-sm"
-                onClick={fetchLatestCurrents}
-              >
-                Retry
-              </button>
-            )}
           </div>
         ) : (
           <>

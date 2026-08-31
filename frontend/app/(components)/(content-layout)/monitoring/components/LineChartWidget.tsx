@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { Spinner } from 'react-bootstrap'
 import {
   CartesianGrid,
@@ -12,7 +12,6 @@ import {
   YAxis,
   Legend,
 } from 'recharts'
-import { apiClient } from '@/lib/api-client'
 import type { DeviceNode } from '../utils/deviceTree'
 import DashboardWidgetCard from './DashboardWidgetCard'
 
@@ -36,21 +35,6 @@ const toNumber = (value: unknown): number | null => {
   return Number.isFinite(num) ? num : null
 }
 
-const formatTimestamp = (timestamp: string): string => {
-  const iso = timestamp.includes('T') ? timestamp : timestamp.replace(' ', 'T')
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return timestamp
-
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const offsetMin = -date.getTimezoneOffset()
-  const sign = offsetMin >= 0 ? '+' : '-'
-  const abs = Math.abs(offsetMin)
-  const offsetHours = pad(Math.floor(abs / 60))
-  const offsetMinutes = pad(abs % 60)
-
-  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${sign}${offsetHours}:${offsetMinutes}`
-}
-
 const formatTimeOnly = (timestamp: string): string => {
   const iso = timestamp.includes('T') ? timestamp : timestamp.replace(' ', 'T')
   const date = new Date(iso)
@@ -60,96 +44,37 @@ const formatTimeOnly = (timestamp: string): string => {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-interface LineChartWidgetProps {
-  device?: DeviceNode | null
+interface AcuvimDataRow {
+  Timestamp?: string
+  V12?: number | string
+  V23?: number | string
+  V31?: number | string
 }
 
-const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [chartData, setChartData] = useState<VoltageDataPoint[]>([])
-  const [lastUpdate, setLastUpdate] = useState<string | null>(null)
+interface LineChartWidgetProps {
+  device?: DeviceNode | null
+  chartData?: AcuvimDataRow[]
+  loading?: boolean
+  error?: string | null
+}
 
-  const fetchVoltageData = useCallback(async () => {
-    const deviceName = device?.meta?.device_name ?? device?.label
-    if (!deviceName) {
-      setChartData([])
-      setError(null)
-      setLastUpdate(null)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    try {
-      // Calculate time range: today from 00:00 to 23:55
-      const now = new Date()
-      const startTime = new Date(now)
-      startTime.setHours(0, 0, 0, 0) // Start at 00:00 today
-      
-      const endTime = new Date(now)
-      endTime.setHours(23, 55, 0, 0) // End at 23:55 today
-
-      // Format dates for API (ISO format without timezone)
-      const formatDateForAPI = (date: Date): string => {
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        const seconds = String(date.getSeconds()).padStart(2, '0')
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-      }
-
-      // Fetch data with 5-minute intervals (288 points: 00:00 to 23:55)
-      const params = new URLSearchParams({
-        device_name: deviceName,
-        per_page: '288', // 24 hours * 60 minutes / 5 minutes = 288 intervals
-        page: '1',
-        start_date: formatDateForAPI(startTime),
-        end_date: formatDateForAPI(endTime),
-      })
-      
-      if (device?.meta?.device_code) {
-        params.set('device_serial', device.meta.device_code)
-      }
-
-      const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
-      const responseData = typeof res.data === 'object' && res.data !== null ? res.data : {}
-      const rows = (responseData.data ?? []) as AcuvimDataRow[]
-
-      if (rows.length === 0) {
-        setChartData([])
-        setError('No voltage data available')
-        setLastUpdate(null)
-        return
-      }
-
-      // Transform data to chart format
-      const transformedData: VoltageDataPoint[] = rows
-        .map((row) => ({
-          time: row.Timestamp ? formatTimeOnly(String(row.Timestamp)) : '',
-          V12: toNumber(row.V12),
-          V23: toNumber(row.V23),
-          V31: toNumber(row.V31),
-        }))
-        .filter((point) => point.time !== '')
-        .reverse() // Most recent last
-
-      setChartData(transformedData)
-      setLastUpdate(rows[0]?.Timestamp ? formatTimestamp(String(rows[0].Timestamp)) : null)
-    } catch (err: any) {
-      setChartData([])
-      setError(err.response?.data?.message || err.message || 'Failed to load voltage data')
-      setLastUpdate(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [device])
-
-  useEffect(() => {
-    fetchVoltageData()
-  }, [fetchVoltageData])
+const LineChartWidget: React.FC<LineChartWidgetProps> = ({
+  device,
+  chartData: rawChartData = [],
+  loading = false,
+  error = null
+}) => {
+  // Transform data to chart format
+  const chartData = useMemo(() => {
+    return rawChartData
+      .map((row) => ({
+        time: row.Timestamp ? formatTimeOnly(String(row.Timestamp)) : '',
+        V12: toNumber(row.V12),
+        V23: toNumber(row.V23),
+        V31: toNumber(row.V31),
+      }))
+      .filter((point) => point.time !== '')
+  }, [rawChartData])
 
   // Calculate dynamic Y-axis domain based on data
   const yAxisDomain = useMemo(() => {
@@ -175,12 +100,7 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
     ]
   }, [chartData])
 
-  const deviceLabel = device?.label ?? 'No device selected'
-  const subtitle = lastUpdate
-    ? `${deviceLabel} | ${lastUpdate}`
-    : device
-      ? `${deviceLabel} | No data available`
-      : 'Select a device to view voltage trends'
+  const subtitle = device ? undefined : 'Select a device to view voltage trends'
 
   return (
     <DashboardWidgetCard
@@ -198,15 +118,6 @@ const LineChartWidget: React.FC<LineChartWidgetProps> = ({ device }) => {
         ) : error ? (
           <div className="d-flex flex-column justify-content-center align-items-center h-100">
             <div className="text-danger fs-13 mb-2">{error}</div>
-            {device && (
-              <button
-                type="button"
-                className="btn btn-sm btn-light border"
-                onClick={fetchVoltageData}
-              >
-                Retry
-              </button>
-            )}
           </div>
         ) : chartData.length === 0 ? (
           <div className="d-flex justify-content-center align-items-center h-100 text-muted">

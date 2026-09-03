@@ -40,11 +40,12 @@ const STATUS_COLOR: Record<string, string> = {
   Online:  '#22c55e',
   Offline: '#6b7280',
   Warning: '#f59e0b',
-  Inactive:'#60a5fa',
+  Inactive:'#9ca3af',
   online:  '#22c55e',
   offline: '#6b7280',
   warning: '#f59e0b',
   idle:    '#60a5fa',
+  inactive:'#9ca3af',
 }
 
 // ─── Raw-data → DeviceNode converter ─────────────────────────────────────────
@@ -306,7 +307,8 @@ const DeviceTree: React.FC<DeviceTreeProps> = ({ selectedId, onSelect }) => {
     online:  allDevices.filter((d) => ['online','Online'].includes(d.status ?? '')).length,
     offline: allDevices.filter((d) => ['offline','Offline'].includes(d.status ?? '')).length,
     warning: allDevices.filter((d) => ['warning','Warning'].includes(d.status ?? '')).length,
-    idle:    allDevices.filter((d) => ['idle','Inactive'].includes(d.status ?? '')).length,
+    idle:    allDevices.filter((d) => ['idle'].includes(d.status ?? '')).length,
+    inactive: allDevices.filter((d) => ['inactive','Inactive'].includes(d.status ?? '')).length,
   }), [allDevices])
 
   // Filtered flat list when searching
@@ -353,6 +355,7 @@ const DeviceTree: React.FC<DeviceTreeProps> = ({ selectedId, onSelect }) => {
             { label: 'Offline', count: counts.offline, color: '#6b7280' },
             { label: 'Warn',    count: counts.warning, color: '#f59e0b' },
             { label: 'Idle',    count: counts.idle,    color: '#60a5fa' },
+            { label: 'Inactive', count: counts.inactive, color: '#9ca3af' },
           ].map(({ label, count, color }) => (
             <div key={label} style={{
               display: 'flex', alignItems: 'center', gap: 3,

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 class MonitoringCache
 {
     public const TTL_SECONDS = 45;
-    public const DEVICE_TREE_TTL_SECONDS = 2592000; // 30 days for device tree only
+    public const DEVICE_TREE_TTL_SECONDS = 300; // 5 minutes for testing
 
     public static function version(): string
     {

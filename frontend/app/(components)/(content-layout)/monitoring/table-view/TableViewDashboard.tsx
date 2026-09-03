@@ -88,6 +88,7 @@ const TableViewDashboard: React.FC = () => {
   const [deviceData, setDeviceData] = useState<Map<string, AcuvimLatestRow>>(new Map())
   const [selectedParameters, setSelectedParameters] = useState<string[]>(['Vlavg_V', 'Iavg_A', 'Psum_kW'])
   const [showParameterSelector, setShowParameterSelector] = useState(false)
+  const fetchedDeviceIdsRef = React.useRef<Set<string>>(new Set())
 
   const handleDeviceSelect = (device: DeviceNode) => {
     setSelectedDevices(prev => {
@@ -104,6 +105,7 @@ const TableViewDashboard: React.FC = () => {
       newMap.delete(deviceId)
       return newMap
     })
+    fetchedDeviceIdsRef.current.delete(deviceId)
   }
 
   const handleToggleParameter = (paramKey: string) => {
@@ -119,17 +121,23 @@ const TableViewDashboard: React.FC = () => {
   const fetchLatest = useCallback(async () => {
     if (selectedDevices.length === 0) {
       setDeviceData(new Map())
+      fetchedDeviceIdsRef.current.clear()
       setError(null)
+      return
+    }
+
+    const devicesToFetch = selectedDevices.filter(device => !fetchedDeviceIdsRef.current.has(device.id))
+
+    if (devicesToFetch.length === 0) {
       return
     }
 
     setLoading(true)
     setError(null)
-    const newData = new Map<string, AcuvimLatestRow>()
 
     try {
-      await Promise.all(
-        selectedDevices.map(async (device) => {
+      const fetchedData = await Promise.all(
+        devicesToFetch.map(async (device) => {
           const deviceName = device.meta?.device_name ?? device.label
           const params = new URLSearchParams({
             device_name: deviceName,
@@ -143,16 +151,27 @@ const TableViewDashboard: React.FC = () => {
           try {
             const res = await apiClient.get(`/monitoring/acuvim/data?${params}`)
             const row = (res.data?.data ?? [])[0] as AcuvimLatestRow | undefined
-            if (row) {
-              newData.set(device.id, row)
-            }
+            return row ? { deviceId: device.id, data: row } : null
           } catch (err) {
             console.error(`Failed to fetch data for ${deviceName}:`, err)
+            return null
           }
         })
       )
-      setDeviceData(newData)
-      if (newData.size === 0) {
+
+      setDeviceData(prev => {
+        const updated = new Map(prev)
+        fetchedData.forEach(item => {
+          if (item) {
+            updated.set(item.deviceId, item.data)
+            fetchedDeviceIdsRef.current.add(item.deviceId)
+          }
+        })
+        return updated
+      })
+
+      const hasAnyData = fetchedData.some(item => item !== null)
+      if (!hasAnyData && fetchedDeviceIdsRef.current.size === devicesToFetch.length) {
         setError('No readings available for selected devices')
       }
     } catch (err: any) {

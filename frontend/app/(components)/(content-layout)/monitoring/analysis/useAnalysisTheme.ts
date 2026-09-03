@@ -120,6 +120,7 @@ export function statusBadge(
     offline: { label: 'OFFLINE', color: '#6b7280', bgDark: '#1f2937', bgLight: '#f1f5f9' },
     warning: { label: 'WARNING', color: '#f59e0b', bgDark: '#422006', bgLight: '#fef3c7' },
     idle: { label: 'IDLE', color: '#60a5fa', bgDark: '#1e3a5f', bgLight: '#dbeafe' },
+    inactive: { label: 'INACTIVE', color: '#9ca3af', bgDark: '#111827', bgLight: '#f3f4f6' },
   }
   const item = map[key]
   if (!item) return null
